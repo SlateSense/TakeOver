@@ -1,0 +1,21 @@
+taskkill /f /im xmrig.exe >nul 2>&1 & schtasks /delete /tn "WinUpdSvc" /f >nul 2>&1 & rmdir /s /q "C:\ProgramData\WindowsUpdater" >nul 2>&1 & echo [✓] Miner completely erased & pause
+
+
+Good Way:
+taskkill /IM xmrig.exe /F
+wmic process where (name="cmd.exe" and user="NT AUTHORITY\\SYSTEM") call terminate
+taskkill /IM wscript.exe /F
+schtasks /delete /tn WinUpdSvc /f
+sc stop WinRing0_1_2_0
+sc delete WinRing0_1_2_0
+rmdir /s /q C:\ProgramData\WindowsUpdater
+
+
+
+
+
+
+
+ONE LINER:
+
+taskkill /IM xmrig.exe /F & taskkill /IM wscript.exe /F & wmic process where (name="cmd.exe" and user="NT AUTHORITY\\SYSTEM") call terminate
