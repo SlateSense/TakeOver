@@ -15,15 +15,22 @@ type "%ProgramData%\WindowsUpdater\miner.log" | find "MSR"
 
 
 
-Clean Up:
-taskkill /IM xmrig.exe /F
-wmic process where (name="cmd.exe" and user="NT AUTHORITY\\SYSTEM") call terminate
-taskkill /IM wscript.exe /F
-schtasks /delete /tn WinUpdSvc /f
-sc stop WinRing0_1_2_0
-sc delete WinRing0_1_2_0
-rmdir /s /q C:\ProgramData\WindowsUpdater
+Step 1: Delete the Existing Service:
 
+=> Stop the service if running
+sc stop WinRing0_1_2_0
+
+=> Delete the service
+sc delete WinRing0_1_2_0
+
+=> Force remove leftover registry entries
+reg delete "HKLM\SYSTEM\CurrentControlSet\Services\WinRing0_1_2_0" /f
+
+If the service name has spaces (like WinRing0_1 2_0), use quotes:
+
+sc stop "WinRing0_1 2_0"
+sc delete "WinRing0_1 2_0"
+reg delete "HKLM\SYSTEM\CurrentControlSet\Services\WinRing0_1 2_0" /f
 
 
 

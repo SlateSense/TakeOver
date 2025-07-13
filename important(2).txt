@@ -1,0 +1,92 @@
+1. Enable XMP/AMP Equivalent (Windows)
+Since you can’t enable XMP directly in Windows, use Intel XTU to overclock RAM:
+
+Download Intel Extreme Tuning Utility (XTU)
+
+Install and run as Administrator
+
+Go to Advanced Tuning > Memory
+
+Manually set:
+
+Memory Multiplier: Match your RAM’s rated speed (e.g., 32 for DDR4-3200)
+
+DRAM Voltage: Usually 1.35V for XMP profiles
+
+Primary Timings: Input values from your RAM’s label (e.g., 16-18-18-36)
+
+https://i.imgur.com/5YQxWqk.png
+
+2. Remove Power Limits (PL1/PL2)
+Method A: Using Powercfg (Admin CMD)
+batch
+powercfg /setacvalueindex SCHEME_CURRENT SUB_PROCESSOR PROCTHROTTLEMAX 100
+powercfg /setactive SCHEME_CURRENT
+Forces CPU to run at max clocks continuously.
+
+Method B: Using ThrottleStop
+Download ThrottleStop
+
+Run as Admin and:
+
+Check "Disable Turbo Boost Power Limits"
+
+Set "PP0 Power Limit" to 4096
+
+Click "Turn On"
+
+https://i.imgur.com/8WjQMdP.png
+
+3. Disable C-States
+Via Registry (Admin CMD):
+batch
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Power" /v "CsEnabled" /t REG_DWORD /d 0 /f
+shutdown /r /t 0
+Forces CPU cores to stay active (C0 state).
+
+4. CPU Affinity Lock (For Mining)
+Add this to your run_watchdog.bat before starting XMRig:
+
+batch
+:: Lock to P-cores first, then E-cores
+set "AFFINITY_MASK=0x5555"  :: For 6P+4E cores
+start /min /affinity !AFFINITY_MASK! "!XMRIG_PATH!" ...
+5. MSR Mod Fallback (If BIOS MSR Fails)
+In your XMRig command, force software MSR:
+
+batch
+--randomx-init=1 --randomx-wrmsr=-1 --msr
+6. Verify Optimizations
+Check CPU Speed (Admin PowerShell):
+powershell
+Get-CimInstance Win32_Processor | Select-Object CurrentClockSpeed, MaxClockSpeed
+Should show constant max speed (e.g., 4700 MHz for i5-14400).
+
+Check Power Limits:
+batch
+powercfg /query | find "PROCTHROTTLEMAX"
+Must return 100%.
+
+7. Thermal Management
+batch
+:: Set fan policy to max (Admin CMD)
+powercfg /setacvalueindex SCHEME_CURRENT SUB_PROCESSOR PERFBOOSTMODE 4
+powercfg /setactive SCHEME_CURRENT
+
+2. Disable VBS (Virtualization-Based Security)
+Press Win + R → type msinfo32
+
+Look for: Virtualization-based Security: Running
+
+If Running, MSR writes will fail silently
+
+To disable:
+
+Open Windows Security → Device Security → Core Isolation
+
+Turn off Memory Integrity
+
+Restart PC
+
+3. Reboot After Script Applies WinRing0 driver
+Some MSR locks (on newer Windows builds) are only lifted after reboot.
