@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<XTUProfile>
+  <ProfileName>PerfBoost Pro i5-14400</ProfileName>
+  <Processor>
+    <CoreRatio>44</CoreRatio> <!-- 4.4GHz P-cores -->
+    <ECoreRatio>35</ECoreRatio> <!-- 3.5GHz E-cores -->
+    <CoreVoltage>1.35</CoreVoltage>
+    <TurboBoostPowerMax>250</TurboBoostPowerMax>
+    <TurboBoostShortPowerMax>300</TurboBoostShortPowerMax>
+  </Processor>
+</XTUProfile>
