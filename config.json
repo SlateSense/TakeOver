@@ -1,0 +1,69 @@
+{
+  "api": {
+    "id": null,
+    "worker-id": "rig01"
+  },
+  "http": {
+    "enabled": true,
+    "host": "127.0.0.1",
+    "port": 16000,
+    "access-token": null,
+    "restricted": true
+  },
+  "autosave": true,
+  "background": false,
+  "colors": true,
+  "title": true,
+  "randomx": {
+    "init": 1,
+    "init-avx2": 1,
+    "mode": "fast",
+    "1gb-pages": true,
+    "rdmsr": true,
+    "wrmsr": true,
+    "cache_qos": false,
+    "numa": true,
+    "scratchpad_prefetch_mode": 1
+  },
+  "cpu": {
+    "enabled": true,
+    "huge-pages": true,
+    "huge-pages-jit": false,
+    "hw-aes": true,
+    "priority": 4,
+    "memory-pool": false,
+    "yield": false,
+    "max-threads-hint": 90,
+    "asm": true,
+    "argon2-impl": null,
+    "cn/0": false,
+    "cn-lite/0": false
+  },
+  "opencl": {
+    "enabled": false
+  },
+  "cuda": {
+    "enabled": false
+  },
+  "donate-level": 0,
+  "log-file": null,
+  "pools": [
+    {
+      "algo": "rx/0",
+      "coin": "monero",
+      "url": "gulf.moneroocean.stream:10128",
+      "user": "49MJ7AMP3xbB4U2V4QVBFDCJyVDnDjouyV5WwSMVqxQo7L2o9FYtTiD2ALwbK2BNnhFw8rxHZUgH23WkDXBgKyLYC61SAon",
+      "pass": "%COMPUTERNAME%",
+      "rig-id": "rig01",
+      "nicehash": false,
+      "keepalive": true,
+      "enabled": true,
+      "tls": false
+    }
+  ],
+  "print-time": 60,
+  "health-print-time": 60,
+  "watch": true,
+  "pause-on-battery": false,
+  "pause-on-active": false
+}
