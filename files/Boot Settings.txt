@@ -1,0 +1,128 @@
+🛡️ Secure Boot Status
+Purpose: Ensures only trusted OS loaders and drivers are executed during boot.
+
+Location in BIOS:
+
+Usually under Security, Boot, or Authentication tab.
+
+How to Configure:
+
+Enter BIOS (press F2, Del, or Esc during boot).
+
+Navigate to Security or Boot Options.
+
+Find Secure Boot and set it to:
+
+Enabled for protection.
+
+Disabled if you're using unsigned bootloaders (e.g., custom Linux distros or stealth setups).
+
+Press F10 to save and exit.
+
+Windows Check:
+
+Run msinfo32 → check Secure Boot State under System Summary2.
+
+🌬️ Fan Control Options
+Purpose: Manage cooling performance and noise levels.
+
+Location in BIOS:
+
+Usually under Hardware Monitor, Power, or Advanced tab.
+
+How to Configure:
+
+Enter BIOS and go to Hardware Monitor.
+
+Enable Smart Fan Mode.
+
+Set fan curves manually:
+
+Low RPM at idle (e.g., 400–600 RPM at <40°C).
+
+Gradual ramp-up to max RPM at high temps (>80°C).
+
+Choose control mode:
+
+PWM for 4-pin fans.
+
+DC for 3-pin fans.
+
+Save with F10.
+
+Tip: Use BIOS fan curve editor or third-party tools like Fan Control, SpeedFan, or HWMonitor for finer control57.
+
+⚙️ CPU Features: C-States & SpeedStep
+Purpose: Power-saving and dynamic frequency scaling.
+
+Location in BIOS:
+
+Under Advanced, CPU Configuration, or Power Management.
+
+How to Configure:
+
+Intel SpeedStep (EIST):
+
+Enabled: Allows dynamic clock scaling.
+
+Disabled: Locks CPU at max frequency (useful for mining or benchmarking).
+
+C-States:
+
+Enabled: Saves power by putting cores to sleep.
+
+Disabled: Keeps cores active for latency-sensitive tasks.
+
+Recommended for mining/performance:
+
+Disable SpeedStep and C-States for consistent high performance911.
+
+🧠 RAM Speed and Timings
+Purpose: Optimize memory bandwidth and latency.
+
+Location in BIOS:
+
+Under Ai Tweaker, Extreme Tweaker, or Advanced Memory Settings.
+
+How to Configure:
+
+Enable XMP (Intel) or DOCP/EXPO (AMD).
+
+Select profile matching your RAM specs (e.g., 3200MHz CL16).
+
+For manual tuning:
+
+Set DRAM Frequency manually.
+
+Adjust CAS Latency (CL), tRCD, tRP, tRAS.
+
+Set DRAM Voltage (e.g., 1.35V for most DDR4 kits).
+
+Save and reboot.
+
+Tools for validation:
+
+Use CPU-Z, Thaiphoon Burner, or AIDA64 to verify timings and stability1416.
+
+🚀 Boot Order & UEFI Settings
+Purpose: Control boot device priority and OS compatibility.
+
+Location in BIOS:
+
+Under Boot, Advanced, or System Configuration.
+
+How to Configure:
+
+Go to Boot Options.
+
+Set Boot Option #1 to your preferred device (e.g., SSD, USB).
+
+Enable UEFI Boot Mode (disable Legacy/CSM).
+
+Optionally enable Fast Boot (can be disabled for troubleshooting).
+
+Save with F10.
+
+Windows Shortcut:
+
+Settings > System > Recovery > Advanced Startup > UEFI Firmware Settings1921.

