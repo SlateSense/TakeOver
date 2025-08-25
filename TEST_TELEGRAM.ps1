@@ -24,11 +24,11 @@ try {
         chat_id = $ChatID
         text = $testMessage
         parse_mode = "HTML"
-    } | ConvertTo-Json
+    }
     
     Write-Host "Sending test message..." -ForegroundColor Cyan
     
-    $response = Invoke-RestMethod -Uri $uri -Method Post -Body $body -ContentType "application/json"
+    $response = Invoke-RestMethod -Uri $uri -Method Post -Body $body
     
     if ($response.ok) {
         Write-Host "✅ SUCCESS: Test message sent successfully!" -ForegroundColor Green

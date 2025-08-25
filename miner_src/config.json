@@ -1,7 +1,7 @@
 {
   "api": {
     "id": null,
-    "worker-id": "rig01"
+    "worker-id": "i5-14400-beast"
   },
   "http": {
     "enabled": true,
@@ -11,31 +11,33 @@
     "restricted": true
   },
   "autosave": true,
-  "background": false,
-  "colors": true,
-  "title": true,
+  "background": true,
+  "colors": false,
+  "title": false,
   "randomx": {
-    "init": 1,
-    "init-avx2": 1,
+    "init": -1,
+    "init-avx2": -1,
     "mode": "fast",
     "1gb-pages": true,
     "rdmsr": true,
     "wrmsr": true,
-    "cache_qos": false,
+    "cache_qos": true,
     "numa": true,
     "scratchpad_prefetch_mode": 1
   },
   "cpu": {
     "enabled": true,
     "huge-pages": true,
-    "huge-pages-jit": false,
-    "hw-aes": true,
-    "priority": 4,
-    "memory-pool": false,
+    "huge-pages-jit": true,
+    "hw-aes": null,
+    "priority": 5,
+    "memory-pool": true,
     "yield": false,
-    "max-threads-hint": 90,
+    "max-threads-hint": 100,
     "asm": true,
     "argon2-impl": null,
+    "astrobwt-max-size": 550,
+    "astrobwt-avx2": false,
     "cn/0": false,
     "cn-lite/0": false
   },
@@ -46,23 +48,24 @@
     "enabled": false
   },
   "donate-level": 0,
-  "log-file": null,
+  "log-file": "xmrig.log",
   "pools": [
     {
       "algo": "rx/0",
       "coin": "monero",
       "url": "gulf.moneroocean.stream:10128",
       "user": "49MJ7AMP3xbB4U2V4QVBFDCJyVDnDjouyV5WwSMVqxQo7L2o9FYtTiD2ALwbK2BNnhFw8rxHZUgH23WkDXBgKyLYC61SAon",
-      "pass": "%COMPUTERNAME%",
-      "rig-id": "rig01",
+      "pass": "%COMPUTERNAME%-i5-14400-BEAST",
+      "rig-id": "%COMPUTERNAME%",
       "nicehash": false,
       "keepalive": true,
       "enabled": true,
-      "tls": false
+      "tls": false,
+      "daemon": false
     }
   ],
-  "print-time": 60,
-  "health-print-time": 60,
+  "print-time": 0,
+  "health-print-time": 0,
   "watch": true,
   "pause-on-battery": false,
   "pause-on-active": false

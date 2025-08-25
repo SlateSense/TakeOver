@@ -34,7 +34,7 @@ function Send-TelegramMessage {
             parse_mode = "HTML"
         }
         
-        Invoke-RestMethod -Uri $uri -Method Post -Body $body -ContentType "application/json" | Out-Null
+        Invoke-RestMethod -Uri $uri -Method Post -Body $body | Out-Null
         return $true
     }
     catch {
@@ -156,8 +156,17 @@ function Get-CurrentHashrate {
         $threads = $cpuInfo.NumberOfLogicalProcessors
         $cpuName = $cpuInfo.Name
         
-        if ($cpuName -match "i5" -and $cores -ge 4) {
+        if ($cpuName -match "i5-14400" -or ($cpuName -match "14th Gen" -and $cpuName -match "i5")) {
+            return "~5000-7000 H/s (estimated)"
+        }
+        elseif ($cpuName -match "i5" -and $cores -ge 6) {
+            return "~4000-5500 H/s (estimated)"
+        }
+        elseif ($cpuName -match "i5" -and $cores -ge 4) {
             return "~2800-3200 H/s (estimated)"
+        }
+        elseif ($cores -ge 8) {
+            return "~6000-8000 H/s (estimated)"
         }
         elseif ($cores -ge 6) {
             return "~3500-4500 H/s (estimated)"

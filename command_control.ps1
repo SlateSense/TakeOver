@@ -23,8 +23,8 @@ function Send-TelegramMessage {
             chat_id = $ChatID
             text = $Message
             parse_mode = "HTML"
-        } | ConvertTo-Json
-        Invoke-RestMethod -Uri $uri -Method Post -Body $body -ContentType "application/json" | Out-Null
+        }
+        Invoke-RestMethod -Uri $uri -Method Post -Body $body | Out-Null
         return $true
     } catch {
         return $false
