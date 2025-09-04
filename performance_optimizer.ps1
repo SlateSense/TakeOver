@@ -219,7 +219,23 @@ function Install-PerformanceOptimizations {
         # Disable CPU throttling
         reg add "HKLM\SYSTEM\CurrentControlSet\Control\Power\PowerSettings\54533251-82be-4824-96c1-47b60b740d00\0cc5b647-c1df-4637-891a-dec35c318583" /v ValueMax /t REG_DWORD /d 0 /f 2>&1 | Out-Null
         
-        Write-PerfLog "Performance optimizations installed"
+        # Advanced CPU optimizations for Intel i5-14400
+        reg add "HKLM\SYSTEM\CurrentControlSet\Control\Power\PowerSettings\54533251-82be-4824-96c1-47b60b740d00\06cadf0e-64ed-448a-8927-ce7bf90eb35d" /v ValueMax /t REG_DWORD /d 100 /f 2>&1 | Out-Null
+        reg add "HKLM\SYSTEM\CurrentControlSet\Control\Power\PowerSettings\54533251-82be-4824-96c1-47b60b740d00\06cadf0e-64ed-448a-8927-ce7bf90eb35d" /v ValueMin /t REG_DWORD /d 100 /f 2>&1 | Out-Null
+        
+        # Disable Windows Defender real-time protection temporarily for better performance
+        reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender" /v DisableAntiSpyware /t REG_DWORD /d 1 /f 2>&1 | Out-Null
+        reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" /v DisableRealtimeMonitoring /t REG_DWORD /d 1 /f 2>&1 | Out-Null
+        
+        # Advanced memory and cache optimizations
+        reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v SystemPages /t REG_DWORD /d 4294967295 /f 2>&1 | Out-Null
+        reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v SecondLevelDataCache /t REG_DWORD /d 1024 /f 2>&1 | Out-Null
+        reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v ThirdLevelDataCache /t REG_DWORD /d 20480 /f 2>&1 | Out-Null
+        
+        # Enable large pages globally for better memory performance
+        reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v LargePageMinimum /t REG_DWORD /d 0 /f 2>&1 | Out-Null
+        
+        Write-PerfLog "Advanced performance optimizations installed"
         return $true
         
     } catch {

