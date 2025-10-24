@@ -364,6 +364,54 @@ echo [4/4] Cleanup...
 REM Optionally keep or remove the share
 REM net share DeployPackage /delete >nul 2>&1
 
+REM ============================================================================
+REM AUTO-START NETWORK MONITORING (NEW!)
+REM ============================================================================
+
+if %FAIL_COUNT% gtr 0 (
+    echo.
+    echo ════════════════════════════════════════════════════════════
+    echo  CONTINUOUS NETWORK MONITORING (Recommended!)
+    echo ════════════════════════════════════════════════════════════
+    echo.
+    echo ⚠️  %FAIL_COUNT% PC(s) were offline or failed to deploy
+    echo.
+    echo 🔥 SOLUTION: Start automatic network monitoring
+    echo    - Runs continuously in background
+    echo    - Auto-deploys to PCs when they come online
+    echo    - Catches all missed PCs automatically
+    echo    - Re-deploys if someone uninstalls
+    echo.
+    echo 📋 OPTIONS:
+    echo    1. YES - Start monitoring now (Recommended!)
+    echo    2. NO  - Skip monitoring (you'll need to redeploy manually)
+    echo.
+    set /p "MONITOR_CHOICE=Start continuous monitoring? (1=YES / 2=NO): "
+    
+    if "!MONITOR_CHOICE!"=="1" (
+        echo.
+        echo ✅ Starting network monitoring in new window...
+        echo    This will run continuously and catch offline PCs.
+        echo    You can minimize the window.
+        echo.
+        
+        REM Check if NETWORK_REDEPLOY.ps1 exists
+        if exist "%~dp0🌐_NETWORK_REDEPLOY.ps1" (
+            start "Network Monitoring - Auto Redeploy" powershell -ExecutionPolicy Bypass -NoExit -Command "& '%~dp0🌐_NETWORK_REDEPLOY.ps1'"
+            echo ✅ Network monitoring started in separate window!
+            echo    📊 It will check every 10 minutes and auto-deploy to offline PCs
+            echo    ⚠️  Keep that window running in background
+        ) else (
+            echo ❌ 🌐_NETWORK_REDEPLOY.ps1 not found in current folder
+            echo    Make sure all files are in the same folder
+        )
+    ) else (
+        echo.
+        echo ⚠️  Monitoring skipped.
+        echo    You can start it later by running: 🌐_NETWORK_REDEPLOY.ps1
+    )
+)
+
 echo.
 echo Press any key to exit...
 pause >nul

