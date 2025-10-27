@@ -4,9 +4,9 @@
 # Run this BEFORE competition to see all devices and identify smart boards
 # ================================================================================================
 
-Write-Host "`n╔══════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║          NETWORK DEVICE DISCOVERY - Pre-Competition          ║" -ForegroundColor Cyan
-Write-Host "╚══════════════════════════════════════════════════════════════╝`n" -ForegroundColor Cyan
+Write-Host "`n+==============================================================+" -ForegroundColor Cyan
+Write-Host "|          NETWORK DEVICE DISCOVERY - Pre-Competition          |" -ForegroundColor Cyan
+Write-Host "+==============================================================+`n" -ForegroundColor Cyan
 
 Write-Host "[+] This will help you identify smart boards BEFORE deployment" -ForegroundColor Yellow
 Write-Host "[+] Scanning network for all devices..." -ForegroundColor Yellow
@@ -16,14 +16,14 @@ Write-Host ""
 $localIP = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object {$_.IPAddress -notlike "127.*" -and $_.PrefixOrigin -eq "Dhcp" -or $_.PrefixOrigin -eq "Manual"} | Select-Object -First 1).IPAddress
 
 if (-not $localIP) {
-    Write-Host "❌ Could not determine local IP address" -ForegroundColor Red
+    Write-Host "[X] Could not determine local IP address" -ForegroundColor Red
     exit 1
 }
 
-Write-Host "📡 Your IP: $localIP" -ForegroundColor Cyan
+Write-Host "SIGNAL Your IP: $localIP" -ForegroundColor Cyan
 $subnet = $localIP.Substring(0, $localIP.LastIndexOf('.'))
-Write-Host "🌐 Scanning subnet: $subnet.0/24" -ForegroundColor Cyan
-Write-Host "⏱️  This will take 1-2 minutes...`n" -ForegroundColor Yellow
+Write-Host "[NET] Scanning subnet: $subnet.0/24" -ForegroundColor Cyan
+Write-Host "[TIME] This will take 1-2 minutes...`n" -ForegroundColor Yellow
 
 # Arrays to store devices
 $labPCs = @()
@@ -64,14 +64,14 @@ Write-Host "Scanning..." -ForegroundColor Yellow
 }
 
 # Display results
-Write-Host "`n╔══════════════════════════════════════════════════════════════╗" -ForegroundColor Green
-Write-Host "║                     DISCOVERY COMPLETE                       ║" -ForegroundColor Green
-Write-Host "╚══════════════════════════════════════════════════════════════╝`n" -ForegroundColor Green
+Write-Host "`n+==============================================================+" -ForegroundColor Green
+Write-Host "|                     DISCOVERY COMPLETE                       |" -ForegroundColor Green
+Write-Host "+==============================================================+`n" -ForegroundColor Green
 
 # Lab PCs
 if ($labPCs.Count -gt 0) {
-    Write-Host "✅ LAB PCS DETECTED ($($labPCs.Count)):" -ForegroundColor Green
-    Write-Host "─────────────────────────────────────────────────────────────" -ForegroundColor Gray
+    Write-Host "[OK] LAB PCS DETECTED ($($labPCs.Count)):" -ForegroundColor Green
+    Write-Host "-------------------------------------------------------------" -ForegroundColor Gray
     $labPCs | ForEach-Object {
         Write-Host "  ✓ $($_.Name) ($($_.IP))" -ForegroundColor Green
     }
@@ -80,28 +80,28 @@ if ($labPCs.Count -gt 0) {
 
 # Smart Boards
 if ($smartBoards.Count -gt 0) {
-    Write-Host "⚠️  SMART BOARDS DETECTED ($($smartBoards.Count)):" -ForegroundColor Yellow
-    Write-Host "─────────────────────────────────────────────────────────────" -ForegroundColor Gray
+    Write-Host "[!]  SMART BOARDS DETECTED ($($smartBoards.Count)):" -ForegroundColor Yellow
+    Write-Host "-------------------------------------------------------------" -ForegroundColor Gray
     $smartBoards | ForEach-Object {
-        Write-Host "  ⚠️  $($_.Name) ($($_.IP)) - DO NOT DEPLOY HERE!" -ForegroundColor Yellow
+        Write-Host "  [!]  $($_.Name) ($($_.IP)) - DO NOT DEPLOY HERE!" -ForegroundColor Yellow
     }
     Write-Host ""
 }
 
 # Teacher PCs
 if ($teacherPCs.Count -gt 0) {
-    Write-Host "⚠️  TEACHER/ADMIN PCS DETECTED ($($teacherPCs.Count)):" -ForegroundColor Yellow
-    Write-Host "─────────────────────────────────────────────────────────────" -ForegroundColor Gray
+    Write-Host "[!]  TEACHER/ADMIN PCS DETECTED ($($teacherPCs.Count)):" -ForegroundColor Yellow
+    Write-Host "-------------------------------------------------------------" -ForegroundColor Gray
     $teacherPCs | ForEach-Object {
-        Write-Host "  ⚠️  $($_.Name) ($($_.IP)) - DO NOT DEPLOY HERE!" -ForegroundColor Yellow
+        Write-Host "  [!]  $($_.Name) ($($_.IP)) - DO NOT DEPLOY HERE!" -ForegroundColor Yellow
     }
     Write-Host ""
 }
 
 # Unknown devices
 if ($unknown.Count -gt 0) {
-    Write-Host "❓ UNKNOWN DEVICES ($($unknown.Count)):" -ForegroundColor Cyan
-    Write-Host "─────────────────────────────────────────────────────────────" -ForegroundColor Gray
+    Write-Host "[?] UNKNOWN DEVICES ($($unknown.Count)):" -ForegroundColor Cyan
+    Write-Host "-------------------------------------------------------------" -ForegroundColor Gray
     Write-Host "These devices don't match common patterns. CHECK MANUALLY!" -ForegroundColor Cyan
     Write-Host ""
     $unknown | ForEach-Object {
@@ -111,24 +111,24 @@ if ($unknown.Count -gt 0) {
 }
 
 # Summary
-Write-Host "╔══════════════════════════════════════════════════════════════╗" -ForegroundColor Magenta
-Write-Host "║                          SUMMARY                             ║" -ForegroundColor Magenta
-Write-Host "╚══════════════════════════════════════════════════════════════╝" -ForegroundColor Magenta
+Write-Host "+==============================================================+" -ForegroundColor Magenta
+Write-Host "|                          SUMMARY                             |" -ForegroundColor Magenta
+Write-Host "+==============================================================+" -ForegroundColor Magenta
 Write-Host ""
-Write-Host "  Lab PCs:          $($labPCs.Count) (✅ Safe to deploy)" -ForegroundColor Green
-Write-Host "  Smart Boards:     $($smartBoards.Count) (⚠️  DO NOT DEPLOY)" -ForegroundColor Yellow
-Write-Host "  Teacher PCs:      $($teacherPCs.Count) (⚠️  DO NOT DEPLOY)" -ForegroundColor Yellow
-Write-Host "  Unknown Devices:  $($unknown.Count) (❓ VERIFY FIRST)" -ForegroundColor Cyan
+Write-Host "  Lab PCs:          $($labPCs.Count) ([OK] Safe to deploy)" -ForegroundColor Green
+Write-Host "  Smart Boards:     $($smartBoards.Count) ([!]  DO NOT DEPLOY)" -ForegroundColor Yellow
+Write-Host "  Teacher PCs:      $($teacherPCs.Count) ([!]  DO NOT DEPLOY)" -ForegroundColor Yellow
+Write-Host "  Unknown Devices:  $($unknown.Count) ([?] VERIFY FIRST)" -ForegroundColor Cyan
 Write-Host ""
 
 # Recommendations
-Write-Host "╔══════════════════════════════════════════════════════════════╗" -ForegroundColor Yellow
-Write-Host "║                      RECOMMENDATIONS                         ║" -ForegroundColor Yellow
-Write-Host "╚══════════════════════════════════════════════════════════════╝" -ForegroundColor Yellow
+Write-Host "+==============================================================+" -ForegroundColor Yellow
+Write-Host "|                      RECOMMENDATIONS                         |" -ForegroundColor Yellow
+Write-Host "+==============================================================+" -ForegroundColor Yellow
 Write-Host ""
 
 if ($unknown.Count -gt 0) {
-    Write-Host "⚠️  ACTION REQUIRED: Unknown devices detected!" -ForegroundColor Yellow
+    Write-Host "[!]  ACTION REQUIRED: Unknown devices detected!" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "You have $($unknown.Count) unknown device(s). Before deploying:" -ForegroundColor Yellow
     Write-Host ""
@@ -149,13 +149,13 @@ if ($unknown.Count -gt 0) {
 }
 
 if ($smartBoards.Count -gt 0) {
-    Write-Host "✅ Good news: Smart boards detected automatically!" -ForegroundColor Green
+    Write-Host "[OK] Good news: Smart boards detected automatically!" -ForegroundColor Green
     Write-Host "   These will be excluded by default patterns." -ForegroundColor Gray
     Write-Host ""
 }
 
 if ($labPCs.Count -gt 0 -and $unknown.Count -eq 0) {
-    Write-Host "✅ All clear! Network layout is clean." -ForegroundColor Green
+    Write-Host "[OK] All clear! Network layout is clean." -ForegroundColor Green
     Write-Host "   You can safely use auto-discovery and deploy to all!" -ForegroundColor Gray
     Write-Host ""
 }
@@ -183,7 +183,7 @@ SAFE TO DEPLOY IPs (Lab PCs only):
 $($labPCs | ForEach-Object {$_.IP} | Out-String)
 "@ | Out-File -FilePath $reportPath -Encoding UTF8
 
-Write-Host "📄 Full report saved to: $reportPath" -ForegroundColor Cyan
+Write-Host "[FILE] Full report saved to: $reportPath" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Press any key to exit..." -ForegroundColor Gray
 $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")

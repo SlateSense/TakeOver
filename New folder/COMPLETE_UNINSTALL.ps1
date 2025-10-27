@@ -1,4 +1,4 @@
-# ================================================================================================
+﻿# ================================================================================================
 # COMPLETE MINER REMOVAL SCRIPT
 # ================================================================================================
 # Removes ALL traces of the miner deployment
@@ -6,9 +6,9 @@
 
 $ErrorActionPreference = "Continue"
 
-Write-Host "════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
 Write-Host "           COMPLETE MINER REMOVAL SCRIPT" -ForegroundColor Cyan
-Write-Host "════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
 Write-Host ""
 
 $removeCount = 0
@@ -43,7 +43,7 @@ foreach ($procName in $minerProcesses) {
 taskkill /F /IM xmrig.exe 2>&1 | Out-Null
 taskkill /F /IM audiodg.exe /FI "COMMANDLINE eq *config.json*" 2>&1 | Out-Null
 
-Write-Host "  ✅ Stopped $stoppedCount miner process(es)" -ForegroundColor Green
+Write-Host "  [OK] Stopped $stoppedCount miner process(es)" -ForegroundColor Green
 Write-Host ""
 
 # ================================================================================================
@@ -75,7 +75,7 @@ foreach ($taskName in $taskNames) {
     }
 }
 
-Write-Host "  ✅ Removed $taskCount scheduled task(s)" -ForegroundColor Green
+Write-Host "  [OK] Removed $taskCount scheduled task(s)" -ForegroundColor Green
 Write-Host ""
 
 # ================================================================================================
@@ -110,7 +110,7 @@ foreach ($runKey in $runKeys) {
     } catch {}
 }
 
-Write-Host "  ✅ Removed $regCount registry entr(ies)" -ForegroundColor Green
+Write-Host "  [OK] Removed $regCount registry entr(ies)" -ForegroundColor Green
 Write-Host ""
 
 # ================================================================================================
@@ -141,7 +141,7 @@ foreach ($svcName in $services) {
     } catch {}
 }
 
-Write-Host "  ✅ Removed $svcCount service(s)" -ForegroundColor Green
+Write-Host "  [OK] Removed $svcCount service(s)" -ForegroundColor Green
 Write-Host ""
 
 # ================================================================================================
@@ -166,7 +166,7 @@ try {
     }
 } catch {}
 
-Write-Host "  ✅ WMI cleanup complete" -ForegroundColor Green
+Write-Host "  [OK] WMI cleanup complete" -ForegroundColor Green
 Write-Host ""
 
 # ================================================================================================
@@ -195,7 +195,7 @@ foreach ($folder in $startupFolders) {
     }
 }
 
-Write-Host "  ✅ Removed $startupCount startup script(s)" -ForegroundColor Green
+Write-Host "  [OK] Removed $startupCount startup script(s)" -ForegroundColor Green
 Write-Host ""
 
 # ================================================================================================
@@ -246,7 +246,7 @@ foreach ($path in $launcherPaths) {
     }
 }
 
-Write-Host "  ✅ Deleted $fileCount location(s)" -ForegroundColor Green
+Write-Host "  [OK] Deleted $fileCount location(s)" -ForegroundColor Green
 Write-Host ""
 
 # ================================================================================================
@@ -296,11 +296,11 @@ try {
     Start-Service -Name WinDefend -ErrorAction SilentlyContinue
     Set-Service -Name WinDefend -StartupType Automatic -ErrorAction SilentlyContinue
     
-    Write-Host "  ✅ Windows Defender restored and re-enabled" -ForegroundColor Green
+    Write-Host "  [OK] Windows Defender restored and re-enabled" -ForegroundColor Green
     $removeCount++
     
 } catch {
-    Write-Host "  ⚠️  Could not fully restore Defender (may need manual re-enable)" -ForegroundColor Yellow
+    Write-Host "  [!]  Could not fully restore Defender (may need manual re-enable)" -ForegroundColor Yellow
     $errorCount++
 }
 Write-Host ""
@@ -327,7 +327,7 @@ foreach ($svcName in $servicesToEnable) {
     } catch {}
 }
 
-Write-Host "  ✅ Re-enabled $enabledCount service(s)" -ForegroundColor Green
+Write-Host "  [OK] Re-enabled $enabledCount service(s)" -ForegroundColor Green
 Write-Host ""
 
 # ================================================================================================
@@ -346,7 +346,7 @@ try {
     # Clear PowerShell history
     Remove-Item (Get-PSReadlineOption).HistorySavePath -Force -ErrorAction SilentlyContinue
     
-    Write-Host "  ✅ Logs and traces cleared" -ForegroundColor Green
+    Write-Host "  [OK] Logs and traces cleared" -ForegroundColor Green
     $removeCount++
 } catch {}
 
@@ -356,23 +356,23 @@ Write-Host ""
 # SUMMARY
 # ================================================================================================
 
-Write-Host "════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
 Write-Host "                    REMOVAL SUMMARY" -ForegroundColor Cyan
-Write-Host "════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Components removed: $removeCount" -ForegroundColor Green
 Write-Host "Errors encountered: $errorCount" -ForegroundColor $(if ($errorCount -gt 0) { "Yellow" } else { "Green" })
 Write-Host ""
 
 if ($errorCount -eq 0) {
-    Write-Host "✅ COMPLETE REMOVAL SUCCESSFUL" -ForegroundColor Green
+    Write-Host "[OK] COMPLETE REMOVAL SUCCESSFUL" -ForegroundColor Green
     Write-Host ""
     Write-Host "All miner components have been removed." -ForegroundColor White
     Write-Host "System has been restored to original state." -ForegroundColor White
     Write-Host ""
     Write-Host "RECOMMENDATION: Restart your PC to complete cleanup." -ForegroundColor Yellow
 } else {
-    Write-Host "⚠️  REMOVAL COMPLETED WITH WARNINGS" -ForegroundColor Yellow
+    Write-Host "[!]  REMOVAL COMPLETED WITH WARNINGS" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "Most components removed, but some errors occurred." -ForegroundColor White
     Write-Host "You may need to manually check:" -ForegroundColor White
@@ -382,7 +382,7 @@ if ($errorCount -eq 0) {
 }
 
 Write-Host ""
-Write-Host "════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
 Write-Host ""
 
 exit 0

@@ -198,9 +198,9 @@ function Get-DeviceType {
 # ================================================================================================
 
 if ($MyInvocation.InvocationName -ne '.') {
-    Write-Host "`n╔══════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-    Write-Host "║            DEVICE TYPE AUTO-DETECTION RESULTS                ║" -ForegroundColor Cyan
-    Write-Host "╚══════════════════════════════════════════════════════════════╝`n" -ForegroundColor Cyan
+    Write-Host "`n+==============================================================+" -ForegroundColor Cyan
+    Write-Host "|            DEVICE TYPE AUTO-DETECTION RESULTS                |" -ForegroundColor Cyan
+    Write-Host "+==============================================================+`n" -ForegroundColor Cyan
     
     $result = Get-DeviceType
     
@@ -210,25 +210,25 @@ if ($MyInvocation.InvocationName -ne '.') {
     Write-Host ""
     
     Write-Host "Detection Reasons:" -ForegroundColor White
-    Write-Host "─────────────────────────────────────────────────────────────" -ForegroundColor Gray
+    Write-Host "-------------------------------------------------------------" -ForegroundColor Gray
     foreach ($reason in $result.Reasons) {
         Write-Host "  • $reason" -ForegroundColor Gray
     }
     
     Write-Host ""
-    Write-Host "─────────────────────────────────────────────────────────────" -ForegroundColor Gray
+    Write-Host "-------------------------------------------------------------" -ForegroundColor Gray
     
     if ($result.IsSmartBoard) {
-        Write-Host "`n⚠️  WARNING: This device appears to be a SMART BOARD!" -ForegroundColor Yellow
-        Write-Host "└─ Deployment recommendation: DO NOT DEPLOY" -ForegroundColor Yellow
-        Write-Host "└─ Reason: High visibility, will be detected immediately" -ForegroundColor Yellow
+        Write-Host "`n[!]  WARNING: This device appears to be a SMART BOARD!" -ForegroundColor Yellow
+        Write-Host "└- Deployment recommendation: DO NOT DEPLOY" -ForegroundColor Yellow
+        Write-Host "└- Reason: High visibility, will be detected immediately" -ForegroundColor Yellow
     } elseif ($result.IsLabPC) {
-        Write-Host "`n✅ This device appears to be a LAB PC" -ForegroundColor Green
-        Write-Host "└─ Deployment recommendation: SAFE TO DEPLOY" -ForegroundColor Green
+        Write-Host "`n[OK] This device appears to be a LAB PC" -ForegroundColor Green
+        Write-Host "└- Deployment recommendation: SAFE TO DEPLOY" -ForegroundColor Green
     } else {
-        Write-Host "`n❓ Device type is UNCERTAIN" -ForegroundColor Cyan
-        Write-Host "└─ Deployment recommendation: VERIFY MANUALLY before deploying" -ForegroundColor Cyan
-        Write-Host "└─ Confidence score too low for automatic decision" -ForegroundColor Cyan
+        Write-Host "`n[?] Device type is UNCERTAIN" -ForegroundColor Cyan
+        Write-Host "└- Deployment recommendation: VERIFY MANUALLY before deploying" -ForegroundColor Cyan
+        Write-Host "└- Confidence score too low for automatic decision" -ForegroundColor Cyan
     }
     
     Write-Host ""

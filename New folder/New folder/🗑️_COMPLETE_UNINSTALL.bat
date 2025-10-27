@@ -1,4 +1,4 @@
-@echo off
+﻿@echo off
 REM ================================================================================================
 REM COMPLETE MINER REMOVAL - Nuclear Option
 REM ================================================================================================
@@ -10,11 +10,11 @@ title Complete Miner Removal
 color 0C
 
 echo.
-echo ╔══════════════════════════════════════════════════════════════╗
-echo ║                                                              ║
-echo ║             🗑️  COMPLETE MINER REMOVAL 🗑️                   ║
-echo ║                                                              ║
-echo ╚══════════════════════════════════════════════════════════════╝
+echo +==============================================================+
+echo |                                                              |
+echo |             🗑  COMPLETE MINER REMOVAL 🗑                   |
+echo |                                                              |
+echo +==============================================================+
 echo.
 echo This will COMPLETELY remove the miner and ALL traces:
 echo.
@@ -27,7 +27,7 @@ echo   • Re-enable disabled services
 echo   • Remove exclusions
 echo   • Clear all logs and traces
 echo.
-echo ⚠️  WARNING: This cannot be undone!
+echo [!]  WARNING: This cannot be undone!
 echo.
 set /p confirm="Type YES to confirm complete removal: "
 
@@ -42,7 +42,7 @@ REM Check admin
 net session >nul 2>&1
 if %errorLevel% neq 0 (
     echo.
-    echo ❌ ERROR: Administrator rights required!
+    echo [X] ERROR: Administrator rights required!
     echo    Right-click this file and select "Run as administrator"
     echo.
     pause
@@ -51,9 +51,9 @@ if %errorLevel% neq 0 (
 
 cls
 echo.
-echo ╔══════════════════════════════════════════════════════════════╗
-echo ║              COMPLETE REMOVAL IN PROGRESS...                 ║
-echo ╚══════════════════════════════════════════════════════════════╝
+echo +==============================================================+
+echo |              COMPLETE REMOVAL IN PROGRESS...                 |
+echo +==============================================================+
 echo.
 
 REM Run PowerShell removal script
@@ -61,9 +61,9 @@ powershell.exe -ExecutionPolicy Bypass -NoProfile -File "%~dp0COMPLETE_UNINSTALL
 
 if %errorLevel% equ 0 (
     echo.
-    echo ╔══════════════════════════════════════════════════════════════╗
-    echo ║                 ✅ REMOVAL COMPLETED                         ║
-    echo ╚══════════════════════════════════════════════════════════════╝
+    echo +==============================================================+
+    echo |                 [OK] REMOVAL COMPLETED                         |
+    echo +==============================================================+
     echo.
     echo All miner components have been removed.
     echo System has been restored to original state.
@@ -72,9 +72,9 @@ if %errorLevel% equ 0 (
     echo.
 ) else (
     echo.
-    echo ╔══════════════════════════════════════════════════════════════╗
-    echo ║                 ⚠️  REMOVAL HAD ISSUES                      ║
-    echo ╚══════════════════════════════════════════════════════════════╝
+    echo +==============================================================+
+    echo |                 [!]  REMOVAL HAD ISSUES                      |
+    echo +==============================================================+
     echo.
     echo Some components may not have been removed.
     echo Check the log above for details.

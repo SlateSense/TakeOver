@@ -1,49 +1,49 @@
-@echo off
+﻿@echo off
 title DEBUG - Miner Deployment Troubleshooting
 color 0E
 
-echo ╔══════════════════════════════════════════════════════════════╗
-echo ║              DEBUG MODE - FIND THE PROBLEM                   ║
-echo ╚══════════════════════════════════════════════════════════════╝
+echo +==============================================================+
+echo |              DEBUG MODE - FIND THE PROBLEM                   |
+echo +==============================================================+
 echo.
 
 REM Check admin rights
 echo [1/5] Checking admin privileges...
 net session >nul 2>&1
 if %errorLevel% neq 0 (
-    echo ❌ FAILED - Not running as Administrator
+    echo [X] FAILED - Not running as Administrator
     echo.
     echo Please right-click this file and select "Run as administrator"
     echo.
     pause
     exit /b 1
 ) else (
-    echo ✅ PASSED - Running as Administrator
+    echo [OK] PASSED - Running as Administrator
 )
 echo.
 
 REM Check files
 echo [2/5] Checking required files...
 if exist "%~dp0DEPLOY_ULTIMATE.ps1" (
-    echo ✅ DEPLOY_ULTIMATE.ps1 found
+    echo [OK] DEPLOY_ULTIMATE.ps1 found
 ) else (
-    echo ❌ DEPLOY_ULTIMATE.ps1 MISSING!
+    echo [X] DEPLOY_ULTIMATE.ps1 MISSING!
     pause
     exit /b 1
 )
 
 if exist "%~dp0xmrig.exe" (
-    echo ✅ xmrig.exe found
+    echo [OK] xmrig.exe found
 ) else (
-    echo ❌ xmrig.exe MISSING!
+    echo [X] xmrig.exe MISSING!
     pause
     exit /b 1
 )
 
 if exist "%~dp0AUTO_DETECT_DEVICE_TYPE.ps1" (
-    echo ✅ AUTO_DETECT_DEVICE_TYPE.ps1 found
+    echo [OK] AUTO_DETECT_DEVICE_TYPE.ps1 found
 ) else (
-    echo ⚠️  AUTO_DETECT_DEVICE_TYPE.ps1 missing (optional)
+    echo [!]  AUTO_DETECT_DEVICE_TYPE.ps1 missing (optional)
 )
 echo.
 
@@ -51,11 +51,11 @@ REM Check PowerShell
 echo [3/5] Checking PowerShell...
 powershell -Command "Write-Host 'PowerShell works!' -ForegroundColor Green"
 if %errorLevel% neq 0 (
-    echo ❌ PowerShell check failed
+    echo [X] PowerShell check failed
     pause
     exit /b 1
 ) else (
-    echo ✅ PASSED - PowerShell is working
+    echo [OK] PASSED - PowerShell is working
 )
 echo.
 
@@ -67,10 +67,10 @@ echo.
 REM Test script execution
 echo [5/5] Testing script execution...
 echo.
-echo ════════════════════════════════════════════════════════════
+echo ============================================================
 echo Running DEPLOY_ULTIMATE.ps1 with VERBOSE output...
 echo Window will stay open to show errors.
-echo ════════════════════════════════════════════════════════════
+echo ============================================================
 echo.
 pause
 
