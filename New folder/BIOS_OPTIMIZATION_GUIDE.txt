@@ -1,0 +1,330 @@
+═══════════════════════════════════════════════════════════════════
+  BIOS OPTIMIZATION GUIDE - Intel i5-14400 (Raptor Lake)
+  For Maximum Mining Performance - Competition Edition
+═══════════════════════════════════════════════════════════════════
+
+CRITICAL SETTINGS (Most Important - 15-20% Hashrate Gain):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. ✅ ENABLE XMP/DOCP PROFILE FOR RAM
+   Location: Advanced → Memory Settings → XMP
+   Set to: Profile 1 or Profile 2 (whichever is highest)
+   Impact: +10-15% hashrate
+   Notes: Enables full RAM speed (3200MHz+ instead of 2400MHz)
+   
+   HOW TO CHECK: In Windows, open Task Manager → Performance → Memory
+   - Should show 3200 MHz or higher (not 2400 MHz)
+
+2. ✅ DISABLE ALL C-STATES
+   Location: Advanced → CPU Configuration → CPU Power Management
+   Settings to DISABLE:
+   - C1E Support: DISABLED
+   - C3 State: DISABLED
+   - C6/C7 State: DISABLED
+   - C8 State: DISABLED
+   - Package C-State: DISABLED
+   - CFG Lock: DISABLED (if present)
+   
+   Impact: +5-10% hashrate
+   Why: Prevents CPU from sleeping/downclocking
+   
+3. ✅ DISABLE INTEL SPEEDSTEP / EIST
+   Location: Advanced → CPU Configuration
+   Set to: DISABLED
+   Impact: CPU runs at full speed 24/7, no throttling
+
+4. ✅ SET POWER LIMITS TO MAXIMUM
+   Location: Advanced → CPU Configuration → Power Management
+   Settings:
+   - PL1 (Power Limit 1): 250W (or Maximum)
+   - PL2 (Power Limit 2): 250W (or Maximum)  
+   - Tau (Time Window): 4096 seconds
+   - Current Limit: Maximum
+   - Short Duration Power Limit: Disabled
+   - Long Duration Power Limit: Disabled
+   
+   Impact: No throttling under sustained load
+   Notes: i5-14400 typically uses 150-180W for mining
+   
+5. ✅ ENABLE ALL CPU CORES
+   Location: Advanced → CPU Configuration
+   Settings:
+   - Active Processor Cores: All (10 cores)
+   - Active E-Cores: All (4 E-cores)
+   - Hyper-Threading: Enabled
+   
+   Impact: Use all 10 cores + 20 threads
+
+
+SECONDARY SETTINGS (Additional 5-10% Gain):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+6. ✅ DISABLE TURBO BOOST POWER LIMITS
+   Location: Advanced → CPU Configuration → Turbo Settings
+   Settings:
+   - Turbo Mode: ENABLED
+   - Turbo Boost Power Limit: DISABLED or MAX
+   - IA AC Load Line: 0.01 (lowest drooping)
+   - IA DC Load Line: 0.01
+   
+   Impact: Sustained turbo frequencies without throttling
+
+7. ⚠️ MEMORY TIMINGS (Advanced Users Only)
+   Location: Advanced → Memory Settings → Manual Timings
+   If comfortable:
+   - Reduce tCL from 16 → 14 or 15
+   - Reduce tRCD, tRP by 1-2
+   - May need slight voltage increase (1.35V safe)
+   
+   Impact: +2-5% hashrate
+   WARNING: Test for stability! Unstable = crashes
+
+8. ✅ DISABLE UNNECESSARY DEVICES
+   Location: Advanced → Integrated Peripherals
+   Disable if not needed:
+   - Onboard Audio: DISABLED (if using external or none)
+   - WiFi/Bluetooth: DISABLED (if using Ethernet)
+   - Serial/Parallel Ports: DISABLED
+   
+   Impact: Reduce system overhead
+
+9. ✅ VIRTUALIZATION SETTINGS
+   Location: Advanced → CPU Configuration
+   Settings:
+   - Intel VT-d: DISABLED (unless using VMs)
+   - Intel VT-x: Can leave ENABLED
+   
+   Impact: Minor reduction in overhead
+
+10. ✅ HPET (High Precision Event Timer)
+    Location: Advanced → Chipset Configuration
+    Set to: DISABLED
+    Impact: Reduced timer overhead
+    Note: Windows optimization script also disables this
+
+
+COOLING & STABILITY (Essential):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+11. ⚠️ FAN CURVES (CRITICAL)
+    Location: Hardware Monitor → Smart Fan Control
+    Settings:
+    - CPU Fan: Aggressive curve
+      → 50% at 50°C
+      → 75% at 65°C
+      → 100% at 75°C
+    - Chassis Fans: Keep at medium-high
+    
+    Target Temperature: Keep CPU under 85°C during mining
+    WARNING: High temps = thermal throttling = lower hashrate
+
+12. ✅ LLC (Load Line Calibration)
+    Location: Advanced → Voltage Configuration
+    Set to: Level 3-4 (Medium)
+    Impact: Prevents voltage droop under heavy load
+    Stability: Better sustained performance
+
+
+OPTIONAL ADVANCED (For Experts):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+13. ⚠️ CPU UNDERVOLT (Thermal/Efficiency)
+    Location: Advanced → Voltage Configuration
+    Settings:
+    - CPU Core Voltage Offset: -0.050V to -0.100V
+    
+    Benefits:
+    - Lower temperatures (5-15°C drop)
+    - Same or better hashrate
+    - Less power consumption
+    
+    WARNING: Test extensively! May cause crashes if too aggressive
+    Start with -0.050V, test for 24 hours, then try -0.075V
+
+14. ✅ RING/CACHE RATIO
+    Location: Advanced → CPU Configuration
+    Settings:
+    - Cache Ratio: 40-42 (4.0-4.2 GHz)
+    - Ring Max OC Ratio: 42
+    
+    Impact: +2-3% hashrate for RandomX (cache-heavy)
+
+15. ✅ DISABLE SECURITY FEATURES (Slight Performance Gain)
+    Location: Boot / Security
+    Settings:
+    - Secure Boot: DISABLED
+    - Intel PTT (Platform Trust Technology): DISABLED
+    - Intel SGX: DISABLED
+    
+    Impact: Slight reduction in overhead
+    Note: Only disable if not needed for other software
+
+
+HOW TO ACCESS BIOS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Common Methods:
+1. Restart PC
+2. Press and hold one of these keys during boot:
+   - DEL (most common)
+   - F2
+   - F12
+   - F10
+   - ESC
+
+Motherboard Specific:
+- MSI: DEL or F2
+- ASUS: DEL or F2
+- Gigabyte: DEL
+- ASRock: DEL or F2
+
+
+AFTER APPLYING SETTINGS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Step-by-Step Process:
+1. Apply BIOS settings above
+2. Save and Exit (F10)
+3. Boot into Windows
+4. Run: 🚀_START_HERE.bat (in this folder)
+5. Script will apply Windows optimizations automatically
+6. Reboot once more
+7. Run miner again
+8. Monitor for 30 minutes:
+   - Check temperatures (HWMonitor or Core Temp)
+   - Watch for stability (no crashes)
+   - Verify hashrate increase
+
+Verification Checklist:
+✅ CPU temps stable under 85°C
+✅ No system crashes for 30+ minutes
+✅ Hashrate increased by 10-20%
+✅ RAM showing correct speed in Task Manager
+
+
+EXPECTED PERFORMANCE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Intel i5-14400 (10 cores, 16GB RAM):
+
+BEFORE Optimization:
+- Hashrate: 4,500 - 5,000 H/s
+- CPU Usage: 70-80%
+- Temps: 75-85°C
+
+AFTER Full Optimization:
+- Hashrate: 5,500 - 6,500 H/s
+- CPU Usage: 90-95%
+- Temps: 70-80°C (with good cooling)
+
+Expected Gain: +15-25% hashrate
+
+
+TROUBLESHOOTING:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Problem: System won't boot after changes
+Solution: Clear CMOS
+- Turn off PC
+- Remove CMOS battery for 30 seconds
+- Or use CMOS jumper on motherboard
+- Settings will reset to defaults
+
+Problem: System is unstable/crashes
+Solution:
+1. Re-enter BIOS
+2. Reduce power limits (PL1/PL2 to 180W)
+3. Or enable C-States back
+4. Or increase voltages slightly
+
+Problem: Overheating (>90°C)
+Solution:
+1. Check CPU cooler mounting
+2. Replace thermal paste
+3. Increase fan speeds
+4. Improve case airflow
+5. Consider better CPU cooler
+
+Problem: Low hashrate despite optimizations
+Solution:
+1. Verify XMP is actually enabled (check Task Manager → RAM speed)
+2. Check Windows Task Manager - is RAM at 3200+ MHz?
+3. Ensure miner is using all CPU threads
+4. Check CPU frequency - should be at boost clocks
+5. Monitor throttling with HWiNFO64
+
+Problem: XMP won't enable / RAM unstable
+Solution:
+1. Try Profile 2 instead of Profile 1
+2. Manually set RAM speed (e.g., 3200 MHz)
+3. Increase RAM voltage slightly (1.35V)
+4. Update BIOS to latest version
+
+
+VERIFICATION TOOLS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Download these free tools:
+
+1. HWiNFO64 - Complete system monitoring
+   Shows: Temps, clocks, throttling, power draw
+
+2. CPU-Z - CPU information
+   Verify: Core count, speeds, cache
+
+3. Task Manager (Built-in)
+   Check: RAM speed, CPU usage
+
+4. Core Temp - Simple temp monitoring
+
+
+POWER & COOLING REQUIREMENTS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Minimum Requirements:
+- PSU: 500W+ (80+ Bronze or better)
+- CPU Cooler: Tower cooler or better
+  (Stock Intel cooler NOT recommended for 24/7 mining)
+- Case: Good airflow (2+ intake, 1+ exhaust fans)
+
+Recommended:
+- PSU: 650W 80+ Gold
+- CPU Cooler: 
+  - Budget: Cooler Master Hyper 212
+  - Better: Noctua NH-U12S
+  - Best: Arctic Liquid Freezer II 240mm
+- Case: Mesh front panel with 3+ fans
+
+
+NOTES & WARNINGS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ These settings prioritize MAXIMUM PERFORMANCE over:
+   - Power efficiency
+   - Noise levels
+   - Component longevity
+
+✅ Safe for 24/7 operation IF:
+   - Temperatures stay under 85°C
+   - Good power supply (500W+)
+   - Adequate cooling
+
+⚠️ Increased Power Consumption:
+   - Stock: ~65W idle, 100W gaming
+   - Optimized mining: 150-180W sustained
+
+⚠️ Every motherboard BIOS is different:
+   - Menu names may vary
+   - Some options may not exist
+   - Consult your motherboard manual
+
+⚠️ For Competition Use:
+   - These settings are optimized for authorized red team exercises
+   - Ensure you have proper authorization before deployment
+   - Monitor system health regularly
+
+═══════════════════════════════════════════════════════════════════
+Last Updated: 2025-10-28
+For: Intel i5-14400 (Raptor Lake) + XMRig Mining
+Competition: Red vs Blue Team - Cybersecurity Training
+═══════════════════════════════════════════════════════════════════

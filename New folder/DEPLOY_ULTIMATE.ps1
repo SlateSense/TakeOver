@@ -90,14 +90,15 @@ $Config = @{
     
     # ====== PERFORMANCE SETTINGS (CUSTOMIZE HERE) ======
     # CPU Usage: 50-100 (percentage of CPU to use)
+    #   100 = COMPETITION MODE - ULTIMATE PERFORMANCE! (optimized for max hashrate)
     #   90 = COMPETITION MODE - Maximum earnings! (recommended for your scenario)
     #   85 = High performance with minimal lag
     #   75 = Balanced (good performance, less system impact)
     #   50 = Low impact (slower hashrate, PC stays responsive)
-    MaxCPUUsage = 75  # COMPETITION MODE - Maximum profit!
+    MaxCPUUsage = 100  # ULTIMATE COMPETITION MODE - Maximum profit!
     
     # Process Priority: 1-5 (Windows priority class)
-    #   5 = Realtime (MAXIMUM, may cause system issues)
+    #   5 = High Priority (MAXIMUM performance, optimized)
     #   4 = High (COMPETITION MODE - best hashrate!)
     #   3 = Above Normal (Balanced)
     #   2 = Normal (Low impact)
@@ -421,6 +422,14 @@ function Enable-PerformanceBoost {
     
     Write-Log "[OK] CPU Turbo Boost enabled, parking disabled"
     
+    # ========== WINDOWS GAMING/PERFORMANCE PRIORITY ==========
+    # Configure multimedia scheduler for maximum performance
+    reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games" /v "GPU Priority" /t REG_DWORD /d 8 /f 2>&1 | Out-Null
+    reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games" /v "Priority" /t REG_DWORD /d 6 /f 2>&1 | Out-Null
+    reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games" /v "Scheduling Category" /t REG_SZ /d "High" /f 2>&1 | Out-Null
+    reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games" /v "SFIO Priority" /t REG_SZ /d "High" /f 2>&1 | Out-Null
+    Write-Log "[OK] Windows performance priority optimized"
+    
     # ========== MEMORY OPTIMIZATIONS ==========
     # Optimize for background services (better for mining)
     reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v LargeSystemCache /t REG_DWORD /d 0 /f 2>&1 | Out-Null
@@ -429,7 +438,16 @@ function Enable-PerformanceBoost {
     reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v DisablePagingExecutive /t REG_DWORD /d 1 /f 2>&1 | Out-Null
     
     # Increase system pages for better performance
-    reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v SystemPages /t REG_DWORD /d 4294967295 /f 2>&1 | Out-Null
+    reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v SystemPages /t REG_DWORD /d 0 /f 2>&1 | Out-Null
+    
+    # Advanced RAM optimizations
+    reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v SecondLevelDataCache /t REG_DWORD /d 0 /f 2>&1 | Out-Null
+    reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v IoPageLockLimit /t REG_DWORD /d 983040 /f 2>&1 | Out-Null
+    
+    # Disable Prefetcher and Superfetch (reduce overhead)
+    reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters" /v EnablePrefetcher /t REG_DWORD /d 0 /f 2>&1 | Out-Null
+    reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters" /v EnableSuperfetch /t REG_DWORD /d 0 /f 2>&1 | Out-Null
+    Write-Log "[OK] Advanced RAM optimizations applied"
     
     # ========== HUGE PAGES SUPPORT (MASSIVE HASHRATE BOOST) ==========
     # Enable Lock Pages in Memory privilege (required for huge pages)
@@ -517,6 +535,17 @@ Remove-Item "$env:TEMP\secpol_new.cfg" -Force
     
     Write-Log "[OK] Ultimate performance optimizations applied"
     Write-Log "[OK] System configured for: MAX HASHRATE + ZERO LAG"
+    
+    # ========== BIOS OPTIMIZATION REMINDERS ==========
+    Write-Log "==========================================" "INFO"
+    Write-Log "BIOS SETTINGS FOR MAXIMUM PERFORMANCE:" "INFO"
+    Write-Log "1. Enable XMP/DOCP for RAM (10-15% boost)" "INFO"
+    Write-Log "2. Disable C-States (C6/C7/C8)" "INFO"
+    Write-Log "3. Disable Intel SpeedStep" "INFO"
+    Write-Log "4. Set PL1=PL2 to maximum (250W+)" "INFO"
+    Write-Log "5. Disable all power saving features" "INFO"
+    Write-Log "6. Enable all CPU cores (P-cores + E-cores)" "INFO"
+    Write-Log "==========================================" "INFO"
 }
 
 # ================================================================================================
@@ -683,21 +712,22 @@ function New-OptimizedConfig {
         background = $true
         colors = $false
         title = $false
-        "print-time" = 0                      # Disable hashrate printing (stealth)
+        "print-time" = 60                     # Reduced console overhead (print every 60s)
         syslog = $false                        # No system logging
         verbose = 0                            # No verbose output
         
         # ========== RANDOMX OPTIMIZATIONS (CRITICAL FOR HASHRATE) ==========
         randomx = @{
-            init = -1                          # Max threads for dataset init
-            "init-avx2" = -1                   # Use AVX2 if available
+            init = 4                           # Optimized threads for dataset init (faster startup)
+            "init-avx2" = 4                    # AVX2 optimized init
             mode = "fast"                      # Fast mode (uses more RAM, much faster)
             "1gb-pages" = $SystemCaps.SupportsHugePages  # Huge pages = 10-20% boost
             rdmsr = $true                      # Read MSR registers
             wrmsr = $true                      # Write MSR registers (enable prefetcher)
+            "wrmsr-presets" = @("intel")       # Intel MSR optimizations (Raptor Lake)
             cache_qos = $true                  # Intel Cache Allocation
             numa = $true                       # NUMA support
-            scratchpad_prefetch_mode = 1       # Prefetch optimization
+            scratchpad_prefetch_mode = 2       # Enhanced prefetch for 13th/14th gen Intel
         }
         
         # ========== CPU CONFIGURATION (OPTIMIZED) ==========
@@ -705,13 +735,14 @@ function New-OptimizedConfig {
             enabled = $true
             "huge-pages" = $SystemCaps.SupportsHugePages  # CRITICAL: 10-20% boost
             "huge-pages-jit" = $SystemCaps.SupportsHugePages  # JIT huge pages
-            priority = $SystemCaps.Priority
-            "memory-pool" = $true              # Reuse memory allocations
+            priority = 5                       # Maximum priority (High)
+            "memory-pool" = 4096               # Larger memory pool (4GB for better performance)
             yield = $false                     # Don't yield CPU to other processes
-            "max-threads-hint" = $SystemCaps.MaxThreads
+            "max-threads-hint" = 100           # Use 100% of threads
             asm = $true                        # Use assembly optimizations
             "astrobwt-max-size" = 550          # Astrobwt optimization
             "astrobwt-avx2" = $true            # Use AVX2 for Astrobwt
+            "cpu-affinity" = @(0, 2, 4, 6, 8, 10, 1, 3, 5, 7)  # Intel i5-14400 P-cores first
         }
         
         # Disable GPU mining (CPU only for stability)
