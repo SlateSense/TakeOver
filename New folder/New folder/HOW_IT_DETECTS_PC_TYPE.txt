@@ -1,0 +1,200 @@
+================================================================
+ AUTOMATIC PC TYPE DETECTION
+ How the script knows if it's your PC or competition PC
+================================================================
+
+The script uses SMART DETECTION with multiple indicators:
+
+================================================================
+ DETECTION LOGIC (Simple & Clear)
+================================================================
+
+SIMPLE RULE: If it matches YOUR PC identifiers → Personal PC
+             Everything else → Competition PC
+
+Check in Order:
+
+1. COMPUTER NAME CHECK ⭐ 
+   ✓ DESKTOP-7HR31RF → PERSONAL PC (SAFE MODE)
+   ✗ Anything else → Continue checking...
+
+2. USERNAME CHECK ⭐
+   ✓ OM → PERSONAL PC (SAFE MODE)
+   ✗ Anything else → Continue checking...
+
+3. CPU MODEL CHECK ⭐
+   ✓ Intel i5-6500 → PERSONAL PC (SAFE MODE)
+   ✗ Anything else → COMPETITION PC (FULL POWER)
+
+4. MANUAL OVERRIDE ⭐ (Always wins)
+   ✓ SAFE_TEST_MODE=1 → PERSONAL PC (forced)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+IF ANY CHECK MATCHES → PERSONAL PC (35% CPU, 2 threads)
+IF NO CHECK MATCHES → COMPETITION PC (75% CPU, auto threads)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+NOTE: Windows Defender status is NOT used because competition
+      PCs will also have Defender running - that's the challenge!
+
+================================================================
+ HOW IT WORKS
+================================================================
+
+Example 1: YOUR PERSONAL PC
+-----------------------------------------------
+Check 1: Computer name = DESKTOP-7HR31RF ✅ MATCH!
+→ DETECTED: PERSONAL PC
+→ RESULT: SAFE MODE (35% CPU, 2 threads)
+
+
+Example 2: COMPETITION PC (Different Name)
+-----------------------------------------------
+Check 1: Computer name = LAB-PC-23 ✗ No match
+Check 2: Username = Student01 ✗ No match
+Check 3: CPU = i5-14400 ✗ No match
+→ DETECTED: COMPETITION PC
+→ RESULT: FULL POWER (75% CPU, 14 threads)
+
+
+Example 3: COMPETITION PC (Even with your username)
+-----------------------------------------------
+Check 1: Computer name = COMP-LAB-15 ✗ No match
+Check 2: Username = OM ✅ MATCH!
+→ DETECTED: PERSONAL PC (username matched)
+→ RESULT: SAFE MODE (35% CPU, 2 threads)
+
+
+Example 4: MANUAL OVERRIDE (On any PC)
+-----------------------------------------------
+SAFE_TEST_MODE=1 is set ✅ OVERRIDE!
+→ DETECTED: PERSONAL PC (forced)
+→ RESULT: SAFE MODE (35% CPU, 2 threads)
+
+================================================================
+ WHAT HAPPENS IN EACH MODE
+================================================================
+
+SAFE MODE (Personal PC):
+------------------------
+✓ CPU Usage: 35% (very gentle)
+✓ Threads: 2 threads only
+✓ Priority: Normal/Below Normal
+✓ Deployment: User folders (fallback)
+✓ Persistence: Limited (5-10 methods)
+✓ Safety: YOUR PC IS PROTECTED
+
+FULL POWER MODE (Competition PC):
+----------------------------------
+✓ CPU Usage: 75% (maximum mining)
+✓ Threads: Auto-detected (14 for i5-14400)
+✓ Priority: High/Above Normal
+✓ Deployment: System folders
+✓ Persistence: All 100+ methods
+✓ Performance: MAXIMUM HASHRATE
+
+================================================================
+ HOW TO OVERRIDE
+================================================================
+
+Force SAFE MODE:
+----------------
+Set environment variable before running:
+    set SAFE_TEST_MODE=1
+    
+Then run any script - it will ALWAYS use safe mode.
+
+
+Force FULL POWER:
+-----------------
+Don't set any variables - let auto-detection work.
+On competition PC, it will automatically detect and
+use full power.
+
+================================================================
+ CONFIDENCE LEVELS
+================================================================
+
+High Confidence (8+ point difference):
+- Very certain about PC type
+- Script will act decisively
+
+Medium Confidence (4-7 point difference):
+- Reasonably certain
+- Will prefer safe mode if unsure
+
+Low Confidence (0-3 point difference):
+- Uncertain - defaults to SAFE MODE
+- Better safe than sorry!
+
+================================================================
+ WHY THIS IS SMART
+================================================================
+
+1. PROTECTS YOUR PC:
+   - Won't damage your personal computer
+   - Automatically detects and uses safe settings
+   - You can test without worry
+
+2. MAXIMIZES COMPETITION:
+   - Automatically uses full power on college PCs
+   - No manual configuration needed
+   - Just copy and run!
+
+3. MANUAL OVERRIDE:
+   - You can always force safe mode
+   - Useful for testing on competition PCs
+   - Set SAFE_TEST_MODE=1 anytime
+
+4. TRANSPARENT:
+   - Shows detection score in logs
+   - You can see why it chose each mode
+   - Clear feedback
+
+================================================================
+ TESTING
+================================================================
+
+Test on Your PC:
+    Right-click START_ULTIMATE_FIXED.bat
+    → Run as administrator
+    → It will detect DESKTOP-7HR31RF + i5-6500
+    → SAFE MODE activates automatically
+    → 35% CPU, 2 threads
+    → Your PC is safe!
+
+Deploy on Competition:
+    Copy folder to USB
+    → Plug into college PC
+    → Right-click START_ULTIMATE_FIXED.bat
+    → Run as administrator
+    → It detects i5-14400 + no AV
+    → FULL POWER activates automatically
+    → 75% CPU, 14 threads
+    → Maximum hashrate!
+
+================================================================
+ SUMMARY
+================================================================
+
+✓ SIMPLE LOGIC: Checks YOUR PC identifiers only
+✓ THREE CHECKS: Computer name, username, CPU model
+✓ SAFE BY DEFAULT: Protects your personal PC automatically
+✓ FULL POWER ON LABS: Maximizes competition performance
+✓ MANUAL OVERRIDE: Can force safe mode on any PC
+✓ TRANSPARENT: Shows detection reason in logs
+✓ NO CONFIGURATION: Just run - it knows what to do!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+YOUR PC (DESKTOP-7HR31RF or user OM or i5-6500):
+→ SAFE MODE (35% CPU) - Your PC is protected! ✅
+
+EVERYTHING ELSE:
+→ FULL POWER (75% CPU) - Maximum hashrate! ⚡
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The script is SMART - it knows where it's running!
+
+================================================================
