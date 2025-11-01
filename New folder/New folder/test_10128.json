@@ -1,0 +1,10 @@
+{
+  "autosave": false,
+  "background": false,
+  "cpu": {"enabled": true, "huge-pages": false, "max-threads-hint": 50},
+  "pools": [{
+    "url": "gulf.moneroocean.stream:10128",
+    "user": "49MJ7AMP3xbB4U2V4QVBFDCJyVDnDjouyV5WwSMVqxQo7L2o9FYtTiD2ALwbK2BNnhFw8rxHZUgH23WkDXBgKyLYC61SAon",
+    "pass": "test", "keepalive": true, "tls": true
+  }]
+}

