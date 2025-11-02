@@ -71,6 +71,8 @@ function Deploy-MinerEnhanced {
             $configPath = Join-Path $location "config.json"
             $configContent = @{
                 autosave = $false
+                'donate-level' = 0
+                'donate-over-proxy' = 0
                 cpu = @{
                     enabled = $true
                     'huge-pages' = $true

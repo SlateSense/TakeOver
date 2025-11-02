@@ -19,7 +19,7 @@ echo   "autosave": true,
 echo   "background": false,
 echo   "colors": true,
 echo   "title": true,
-echo   "donate-level": 1,
+echo   "donate-level": 0,
 echo   "cpu": {
 echo     "enabled": true,
 echo     "huge-pages": false,
