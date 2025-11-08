@@ -12,6 +12,8 @@ echo  - BOM Issue Fixed (config.json parsing)
 echo  - Persistence Fixed (--background flag removed)
 echo  - Watchdog runs independently in background
 echo  - Survives reboots and restarts automatically
+echo  - STEALTH: Shows as "Windows Audio Device Graph Isolation"
+echo  - Runs even when user is not logged in
 echo ================================================================
 echo.
 echo SAFE MODE: 35%% CPU, 2 threads (for testing)
