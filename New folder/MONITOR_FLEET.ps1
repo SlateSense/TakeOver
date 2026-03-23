@@ -6,8 +6,8 @@
 
 param(
     [string[]]$PCList = @(),  # Leave empty to auto-detect, or specify: @("PC01", "PC02", ...)
-    [switch]$ShowHashrates = $true,
-    [switch]$AutoRefresh = $false,
+    [switch]$ShowHashrates,
+    [switch]$AutoRefresh,
     [int]$RefreshInterval = 30  # seconds
 )
 
