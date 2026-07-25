@@ -169,7 +169,7 @@ $Config = @{
     UniversalAVBypass = $true
     
     # ====== PERFORMANCE SETTINGS (CUSTOMIZE HERE) ======
-    MaxCPUUsage = 85
+    MaxCPUUsage = 75
     ProcessPriority = 3
     MiningThreads = 0
 }
@@ -433,7 +433,7 @@ function Get-SystemCaps {
         # Return safe defaults
         return @{
             MaxThreads = 3
-            MaxCpuUsage = 85
+            MaxCpuUsage = 70
             Priority = 3
             SupportsHugePages = $false
             TotalRAM = 8
@@ -453,14 +453,14 @@ function Get-SystemCaps {
     # Determine CPU tier and configure accordingly
     $cpuTier = "Unknown"
     $maxThreads = $cpuThreads
-    $maxCpuUsage = 85
+    $maxCpuUsage = 75
     $priority = 3
     
     # TIER 1: High-End CPUs (Intel i7/i9, AMD Ryzen 7/9, 12+ threads)
     if ($cpuThreads -ge 12 -or $cpuName -match "i7|i9|Ryzen 7|Ryzen 9|Xeon") {
         $cpuTier = "High-End"
         $maxThreads = [math]::Max(1, [int]($cpuThreads * 0.80))  # Use 80% of threads
-        $maxCpuUsage = 85  # Can push harder
+        $maxCpuUsage = 70  # Can push harder
         $priority = 3  # High priority
         Write-Log "Detected: HIGH-END CPU ($cpuTier) - Aggressive settings"
         Write-Log "   Threads: $maxThreads/$cpuThreads (80%) | CPU: $maxCpuUsage% | Priority: High"
@@ -470,7 +470,7 @@ function Get-SystemCaps {
     elseif ($cpuThreads -ge 6 -or $cpuName -match "i5|Ryzen 5") {
         $cpuTier = "Mid-Range"
         $maxThreads = [math]::Max(1, [int]($cpuThreads * 0.70))  # Use 70% of threads
-        $maxCpuUsage = 85  # Balanced
+        $maxCpuUsage = 70  # Balanced
         $priority = 3  # Above Normal
         Write-Log "Detected: MID-RANGE CPU ($cpuTier) - Balanced settings"
         Write-Log "   Threads: $maxThreads/$cpuThreads (70%) | CPU: $maxCpuUsage% | Priority: Above Normal"
@@ -497,12 +497,12 @@ function Get-SystemCaps {
     }
     
     # Special optimization for Intel i5-14400 (our target)
-    if ($cpuName -match "i5-14400" -and $cpuThreads -eq 20) {
-        $maxThreads = 14  # Optimized specifically
-        $maxCpuUsage = 85
+    if ($cpuName -match "i5-14400" -and $cpuThreads -eq 16) {
+        $maxThreads = 13  # Optimized specifically
+        $maxCpuUsage = 70
         $priority = 3
         Write-Log "PERFECT MATCH: Intel i5-14400 detected - using OPTIMIZED config!"
-        Write-Log "   Threads: 14/20 (70%) | CPU: 75% | Priority: Above Normal"
+        Write-Log "   Threads: 12/20 (70%) | CPU: 70% | Priority: Above Normal"
     }
     
     # RAM-based adjustments
